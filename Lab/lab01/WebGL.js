@@ -110,8 +110,8 @@ function click(ev, gl, canvas, u_Position, u_FragColor){
         var xy = g_points[i];
         var rgba = g_colors[i];
 
-        // gl.uniform4f( ?? ); //TODO: pass position of a point into shader to draw
-        // gl.uniform4f( ?? ); //TODO: pass color of a point into shader to draw
+        gl.uniform4f(u_Position, xy[0], xy[1], 0.0, 1.0); //TODO: pass position of a point into shader to draw
+        gl.uniform4f(u_FragColor, rgba[0], rgba[1], rgba[2], rgba[3]); //TODO: pass color of a point into shader to draw
 
         gl.drawArrays(gl.POINTS, 0, 1);//draw a point
     }
