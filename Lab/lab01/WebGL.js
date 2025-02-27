@@ -84,21 +84,21 @@ function click(ev, gl, canvas, u_Position, u_FragColor){
     console.log("rect. left, top, width, height: " + rect.left + " "  + rect.top + " " + rect.width + " " + rect.height );
 
     //Todo-1: convert x and y to canvas space and normal them to (-1, 1) for webgl to use
-    //x = 
-    //y = 
+    x = (x - 200) / 200
+    y = (200 - y) / 200
 
     //put mouse click position to g_points
     g_points.push([x, y]); 
     //Todo-2: calculate color of the point
-    // if( ??? ){
-    //     g_colors.push([1.0,0.0,0.0, 1.0]) //red
-    // }else if( ??? ){
-    //     g_colors.push([0.0,1.0,0.0, 1.0]) //green
-    // }else if( ??? ){
-    //     g_colors.push([0.0,0.0,1.0, 1.0]) //blud
-    // }else{
-    //     g_colors.push([1.0,1.0,1.0, 1.0]) //white
-    // }
+    if( x > 0 && y > 0 ){
+        g_colors.push([1.0,0.0,0.0, 1.0]) //red
+    }else if( x < 0 && y < 0 ){
+        g_colors.push([0.0,1.0,0.0, 1.0]) //green
+    }else if( x < 0 && y > 0 ){
+        g_colors.push([0.0,0.0,1.0, 1.0]) //blud
+    }else{
+        g_colors.push([1.0,1.0,1.0, 1.0]) //white
+    }
 
     // Clear canvas by background color before drawing
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
