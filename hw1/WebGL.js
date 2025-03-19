@@ -1,7 +1,3 @@
-//This tempalte is just for your reference
-//You do not have to follow this template 
-//You are very welcome to write your program from scratch
-
 //shader
 var VSHADER_SOURCE = `
     attribute vec4 a_Position;
@@ -93,6 +89,13 @@ function keydown(ev){ //you may want to define more arguments for this function
     if (ev.key == 'r') colorFlag = 'r';
     else if (ev.key == 'g') colorFlag = 'g';
     else if (ev.key == 'b') colorFlag = 'b';
+    
+    if(ev.key == 'p') shapeFlag = 'p';
+    else if(ev.key == 'h') shapeFlag = 'h';
+    else if(ev.key == 'v') shapeFlag = 'v';
+    else if(ev.key == 't') shapeFlag = 't';
+    else if(ev.key == 'q') shapeFlag = 'q';
+    else if(ev.key == 'c') shapeFlag = 'c';
 }
 
 function click(ev){ //you may want to define more arguments for this function
@@ -107,76 +110,140 @@ function click(ev){ //you may want to define more arguments for this function
     let color;
     if (colorFlag === 'r') color = [1.0, 0.0, 0.0];
     else if (colorFlag === 'g') color = [0.0, 1.0, 0.0];
-    else color = [0.0, 0.0, 1.0];
-    g_points.push({ position: [x, y], color });
-    //self-define draw() function
-    //I suggest that you can clear the canvas
-    //and redraw whole frame(canvas) after any mouse click
+    else if(colorFlag == 'b') color = [0.0, 0.0, 1.0];
+    
+    if(shapeFlag == 'p') g_points.push({ position: [x, y], color });
+    else if (shapeFlag === 'h') {
+        g_horiLines.push({ position: [-1, y], color });
+        g_horiLines.push({ position: [1, y], color });
+    } 
+    else if (shapeFlag === 'v') {
+        g_vertiLines.push({ position: [x, 1], color });
+        g_vertiLines.push({ position: [x, -1], color });
+    } 
+    else if (shapeFlag === 't') {
+        let size = 0.1;
+        g_triangles.push({ position: [x, y + size / 2], color });
+        g_triangles.push({ position: [x - size / 2, y - size / 2], color });
+        g_triangles.push({ position: [x + size / 2, y - size / 2], color });
+    } 
+    else if (shapeFlag === 'q') {
+        let size = 0.1;
+        let x1 = x - size / 2, y1 = y + size / 2;
+        let x2 = x + size / 2, y2 = y + size / 2;
+        let x3 = x - size / 2, y3 = y - size / 2;
+        let x4 = x + size / 2, y4 = y - size / 2;
+
+        g_squares.push({ position: [x1, y1], color });
+        g_squares.push({ position: [x3, y3], color });
+        g_squares.push({ position: [x2, y2], color });
+
+        g_squares.push({ position: [x2, y2], color });
+        g_squares.push({ position: [x3, y3], color });
+        g_squares.push({ position: [x4, y4], color });
+    } 
+    else if (shapeFlag === 'c') {
+        let numSegments = 20;
+        let radius = 0.05;
+        let circleVertices = [];
+        let circleColors = [];
+    
+        circleVertices.push(x, y);
+        circleColors.push(...color);
+    
+        for (let i = 0; i <= numSegments; i++) {
+            let angle = (i / numSegments) * 2 * Math.PI;
+            let xPos = x + radius * Math.cos(angle);
+            let yPos = y + radius * Math.sin(angle);
+            circleVertices.push(xPos, yPos);
+            circleColors.push(...color);
+        }
+    
+        g_circles.push({ position: circleVertices, color: circleColors });
+    }
+    
     draw();
-    console.log("click");
 }
 
-
-function draw(){ //you may want to define more arguments for this function
-    //redraw whole canvas here
-    //Note: you are only allowed to same shapes of this frame by single gl.drawArrays() call
+function draw() {
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    let vertices = [];
-    let colors = [];
-    let numVertices = 0;
+    function drawShape(vertices, colors, mode) {
+        if (vertices.length === 0) return;
 
+        let vertexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+        let a_Position = gl.getAttribLocation(program, 'a_Position');
+        gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(a_Position);
+
+        let colorBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+
+        let a_Color = gl.getAttribLocation(program, 'a_Color');
+        gl.vertexAttribPointer(a_Color, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(a_Color);
+
+        gl.drawArrays(mode, 0, vertices.length / 2);
+    }
+
+    let pointVertices = [];
+    let pointColors = [];
     g_points.forEach(point => {
-        vertices.push(...point.position);
-        colors.push(...point.color);
-        numVertices++;
+        pointVertices.push(...point.position);
+        pointColors.push(...point.color);
     });
 
+    let lineVertices = [];
+    let lineColors = [];
     g_horiLines.forEach(line => {
-        vertices.push(...line.position);
-        colors.push(...line.color);
-        numVertices++;
+        lineVertices.push(...line.position);
+        lineColors.push(...line.color);
     });
-
     g_vertiLines.forEach(line => {
-        vertices.push(...line.position);
-        colors.push(...line.color);
-        numVertices++;
+        lineVertices.push(...line.position);
+        lineColors.push(...line.color);
     });
 
+    let triangleVertices = [];
+    let triangleColors = [];
     g_triangles.forEach(triangle => {
-        vertices.push(...triangle.position);
-        colors.push(...triangle.color);
-        numVertices++;
+        triangleVertices.push(...triangle.position);
+        triangleColors.push(...triangle.color);
     });
 
+    let squareVertices = [];
+    let squareColors = [];
     g_squares.forEach(square => {
-        vertices.push(...square.position);
-        colors.push(...square.color);
-        numVertices += 6;
+        squareVertices.push(...square.position);
+        squareColors.push(...square.color);
     });
-
+    
     g_circles.forEach(circle => {
-        vertices.push(...circle.position);
-        colors.push(...circle.color);
-        numVertices++;
+        let positionLocation = gl.getAttribLocation(program, 'a_Position');
+        let colorLocation = gl.getAttribLocation(program, 'a_Color');
+    
+        let positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(circle.position), gl.STATIC_DRAW);
+        gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(positionLocation);
+    
+        let colorBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(circle.color), gl.STATIC_DRAW);
+        gl.vertexAttribPointer(colorLocation, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(colorLocation);
+
+        gl.drawArrays(gl.TRIANGLE_FAN, 0, circle.position.length / 2);
     });
+    
 
-    let vertexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-
-    let a_Position = gl.getAttribLocation(program, 'a_Position');
-    gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(a_Position);
-
-    let colorBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-
-    let a_Color = gl.getAttribLocation(program, 'a_Color');
-    gl.vertexAttribPointer(a_Color, 3, gl.FLOAT, false, 0, 0);
-    gl.enableVertexAttribArray(a_Color);
-
-    gl.drawArrays(gl.POINTS, 0, numVertices);
+    drawShape(pointVertices, pointColors, gl.POINTS);
+    drawShape(lineVertices, lineColors, gl.LINES);
+    drawShape(triangleVertices, triangleColors, gl.TRIANGLES);
+    drawShape(squareVertices, squareColors, gl.TRIANGLES);
 }
