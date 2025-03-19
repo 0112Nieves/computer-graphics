@@ -18,7 +18,6 @@ var FSHADER_SOURCE = `
     }
 `;
 
-
 var canvas;
 var gl;
 var shapeFlag = 'p'; //p: point, h: hori line: v: verti line, t: triangle, q: square, c: circle
@@ -29,6 +28,7 @@ var g_vertiLines = [];
 var g_triangles = [];
 var g_squares = [];
 var g_circles = [];
+var shapeArray = [];
 //var ... of course you may need more variables
 
 function compileShader(gl, vShaderText, fShaderText){
@@ -111,23 +111,36 @@ function click(ev){ //you may want to define more arguments for this function
     if (colorFlag === 'r') color = [1.0, 0.0, 0.0];
     else if (colorFlag === 'g') color = [0.0, 1.0, 0.0];
     else if(colorFlag == 'b') color = [0.0, 0.0, 1.0];
+
+    function checkMaxShapes(shapeArray, times) {
+        if (shapeArray.length >= 5 * times) {
+            for(let i = 0; i < times; i++) shapeArray.shift();
+        }
+    }
     
-    if(shapeFlag == 'p') g_points.push({ position: [x, y], color });
+    if(shapeFlag == 'p'){
+        checkMaxShapes(g_points, 1);
+        g_points.push({ position: [x, y], color });
+    }
     else if (shapeFlag === 'h') {
+        checkMaxShapes(g_horiLines, 2);
         g_horiLines.push({ position: [-1, y], color });
         g_horiLines.push({ position: [1, y], color });
     } 
     else if (shapeFlag === 'v') {
+        checkMaxShapes(g_vertiLines, 2);
         g_vertiLines.push({ position: [x, 1], color });
         g_vertiLines.push({ position: [x, -1], color });
     } 
     else if (shapeFlag === 't') {
+        checkMaxShapes(g_triangles, 3);
         let size = 0.1;
         g_triangles.push({ position: [x, y + size / 2], color });
         g_triangles.push({ position: [x - size / 2, y - size / 2], color });
         g_triangles.push({ position: [x + size / 2, y - size / 2], color });
     } 
     else if (shapeFlag === 'q') {
+        checkMaxShapes(g_squares, 6);
         let size = 0.1;
         let x1 = x - size / 2, y1 = y + size / 2;
         let x2 = x + size / 2, y2 = y + size / 2;
@@ -147,6 +160,7 @@ function click(ev){ //you may want to define more arguments for this function
         let radius = 0.05;
         let circleVertices = [];
         let circleColors = [];
+        checkMaxShapes(g_circles, 1);
     
         circleVertices.push(x, y);
         circleColors.push(...color);
