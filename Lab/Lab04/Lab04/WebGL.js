@@ -209,6 +209,7 @@ function main(){
             draw(gl)
         }else if ( event.key == 'g' || event.key == 'G'){ //shorten the second triangle
             console.log('G')
+            if(canGrab) grab = !grab;
             ///// TODO: when the user press 'g' or 'G'
             /////       1. consider whether the triangle corner and the circle touch each other
             /////       2. consider if the circle be grabbed by the triangle corner
@@ -260,15 +261,40 @@ function draw(gl)
     ////triangle corner coordinate in world space
     const triangleCornerWorld = transformMat.multiplyVector4(new Vector4(triangleVerticesB.slice(3, 6).concat(1)));
     ////TODO1: circle coordinate in world space
-    transformMat = new Matrix4(transformMatCircle1)
+    transformMat = new Matrix4(transformMatCircle1);
+    const circleCornerWorld = transformMat.multiplyVector4(new Vector4([0.0, 0.0, 0.0, 1.0]));
     ////TODO2: check whether the triangle corner and the circle touch each other
-    ///////TODO2-hint: (x1-x2)^2 + (y1-y2)^2 <= r^2
-    ////TODO3: different interaction processes for the circle and the triangle corner, there are three cases
+    const triangleX = triangleCornerWorld.elements[0];
+    const triangleY = triangleCornerWorld.elements[1];
+    const circleX = circleCornerWorld.elements[0];
+    const circleY = circleCornerWorld.elements[1];
 
-    initAttributeVariable(gl, program.a_Position, circleModel.vertexBuffer);//set circle  vertex to shader varibale
-    initAttributeVariable(gl, program.a_Color, circleModel.colorBuffer); //set circle normal color to shader varibale
-    gl.uniformMatrix4fv(program.u_modelMatrix, false, transformMat.elements);//pass current transformMat to shader
-    gl.drawArrays(gl.TRIANGLES, 0, circleModel.numVertices);//draw the triangle 
+    const distance = Math.sqrt(Math.pow(triangleX - circleX, 2) + Math.pow(triangleY - circleY, 2));
+
+    if (distance <= circleRadius) {
+        canGrab = true;
+        if (grab) { // 深綠色
+            transformMatCircle1.setTranslate(triangleX, triangleY, 0);
+            initAttributeVariable(gl, program.a_Position, circleModelGrab.vertexBuffer);
+            initAttributeVariable(gl, program.a_Color, circleModelGrab.colorBuffer);
+        } else { // 淺綠色
+            initAttributeVariable(gl, program.a_Position, circleModelTouch.vertexBuffer);
+            initAttributeVariable(gl, program.a_Color, circleModelTouch.colorBuffer);
+        }
+    } else {
+        canGrab = false;
+        if (!grab) {
+            initAttributeVariable(gl, program.a_Position, circleModel.vertexBuffer);
+            initAttributeVariable(gl, program.a_Color, circleModel.colorBuffer);
+        }
+    }
+    
+    if (grab) {
+        transformMatCircle1.setTranslate(triangleX, triangleY, 0);
+    }
+    
+    gl.uniformMatrix4fv(program.u_modelMatrix, false, transformMatCircle1.elements);
+    gl.drawArrays(gl.TRIANGLE_FAN, 0, circleModel.numVertices);     
 
     circle1Angle ++; //keep changing the angle of the triangle
     transformMat.rotate(circle1Angle, 0, 0, 1);
