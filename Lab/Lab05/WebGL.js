@@ -148,8 +148,10 @@ var colors = new Float32Array(//9 vertices (three triangles)'s color
       );
 
 var modelMatrix1 = new Matrix4();
+var modelMatrix2 = new Matrix4();
 var frontViewMatrix = new Matrix4();
 var pespProjMatrix = new Matrix4();
+
 var transformMat = new Matrix4();
 var mouseLastX, mouseLastY;
 var mouseDragging = false;
@@ -181,8 +183,7 @@ function main(){
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.SCISSOR_TEST);//enable scissor test to only apply background clear on one viewport
 
-    frontViewMatrix.setLookAt(0, 0, -10, 0, 0, 100, 0, 1, 0);
-    pespProjMatrix.setPerspective(30, canvas.width/canvas.height, 1, 100);
+    
 
     canvas.onmousedown = function(ev){mouseDown(ev)};
     canvas.onmousemove = function(ev){mouseMove(ev)};
@@ -261,10 +262,31 @@ function draw(x, y){
     //call drawOneViewPort three times to draw the three views
     modelMatrix1.setRotate(-angleY, 1, 0, 0);
     modelMatrix1.rotate(angleX, 0, 1, 0);
-    modelMatrix1.translate(0, 0, 0);
+    modelMatrix1.translate(-0.7, 0, 0);
+    modelMatrix2.setRotate(-angleY, 1, 0, 0);
+    modelMatrix2.rotate(angleX, 0, 1, 0);
+    modelMatrix2.translate(0.7, 0, 0);
 
     //this only draw one set of triangles because we pass "null" for the last argument
-    drawOneViewport(gl, 0, 0, canvas.width, canvas.height,
+
+    // Perspective camera model (front side view)
+    frontViewMatrix.setLookAt(0, 0, -10, 0, 0, 100, 0, 1, 0);
+    pespProjMatrix.setPerspective(30, canvas.width/canvas.height, 1, 100);
+    drawOneViewport(gl, 0, 0, canvas.width / 2, canvas.height / 2,
                     0, 0, 0,
-                    pespProjMatrix, frontViewMatrix, modelMatrix1, null );
+                    pespProjMatrix, frontViewMatrix, modelMatrix1, modelMatrix2 );
+
+    // Orthographic camera model (front side view)
+    frontViewMatrix.setLookAt(0, 0, -10, 0, 0, 100, 0, 1, 0);
+    pespProjMatrix.setOrtho(-2, 2, -2, 2, -10, 20);
+    drawOneViewport(gl, canvas.width / 2, 0, canvas.width / 2, canvas.height / 2,
+                    0.4, 0.4, 0.4,
+                    pespProjMatrix, frontViewMatrix, modelMatrix1, modelMatrix2 );
+
+    // Look into the scene from back side (perspective camera model)
+    frontViewMatrix.setLookAt(0, 0, 10, 0, 0, -100, 0, 1, 0);
+    pespProjMatrix.setPerspective(30, canvas.width * 2/canvas.height, 1, 100);
+    drawOneViewport(gl, 0, canvas.height / 2, canvas.width, canvas.height / 2,
+                    0.8, 0.8, 0.8,
+                    pespProjMatrix, frontViewMatrix, modelMatrix1, modelMatrix2 );
 }
