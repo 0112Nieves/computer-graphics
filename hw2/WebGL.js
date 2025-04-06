@@ -53,6 +53,12 @@ function compileShader(gl, vShaderText, fShaderText){
     return program;
 }
 
+function initAttributeVariable(gl, a_attribute, buffer){
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.vertexAttribPointer(a_attribute, buffer.num, buffer.type, false, 0, 0);
+    gl.enableVertexAttribArray(a_attribute);
+}
+
 function initArrayBuffer( gl, data, num, type, attribute){
     var buffer = gl.createBuffer();
     if(!buffer){
@@ -83,9 +89,9 @@ function createCircleVertices(radius, segments, isSemiCircle = false) {
 
     return new Float32Array(vertices);
 }
-
+var vertices = [];
 function drawCircleAtPosition(gl, transformMat, color = [1.0, 0.3, 0.2], radius = 1.0, segments = 30, isSemiCircle = false) {
-    const vertices = createCircleVertices(radius, segments, isSemiCircle);
+    vertices = createCircleVertices(radius, segments, isSemiCircle);
 
     const colorData = [];
     for (let i = 0; i <= segments + 1; i++) {
@@ -99,6 +105,39 @@ function drawCircleAtPosition(gl, transformMat, color = [1.0, 0.3, 0.2], radius 
     gl.drawArrays(gl.TRIANGLE_FAN, 0, vertices.length / 2);
 }
 
+function initArrayBufferForLaterUse(gl, data, num, type) {
+    // Create a buffer object
+    var buffer = gl.createBuffer();
+    if (!buffer) {
+      console.log('Failed to create the buffer object');
+      return null;
+    }
+    // Write date into the buffer object
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+  
+    // Store the necessary information to assign the object to the attribute variable later
+    buffer.num = num;
+    buffer.type = type;
+  
+    return buffer;
+}
+
+function initVertexBufferForLaterUse(gl, vertices, colors){
+    var nVertices = vertices.length / 3;
+
+    var o = new Object();
+    o.vertexBuffer = initArrayBufferForLaterUse(gl, new Float32Array(vertices), 3, gl.FLOAT);
+    o.colorBuffer = initArrayBufferForLaterUse(gl, new Float32Array(colors), 3, gl.FLOAT);
+    if (!o.vertexBuffer || !o.colorBuffer) 
+        console.log("Error: in initVertexBufferForLaterUse(gl, vertices, colors)"); 
+    o.numVertices = nVertices;
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+
+    return o;
+}
 
 var transformMat = new Matrix4();
 var circle = new Matrix4();
@@ -122,6 +161,7 @@ function popMatrix(){
 
 function main(){
     var canvas = document.getElementById('webgl');
+    var pink = [ 1.0, 0.58, 0.85 ]
     var gl = canvas.getContext('webgl2');
     if(!gl){
         console.log('Failed to get the rendering context for WebGL');
@@ -129,6 +169,13 @@ function main(){
     }
 
     program = compileShader(gl, VSHADER_SOURCE, FSHADER_SOURCE);
+
+    circleModel = initVertexBufferForLaterUse(gl, vertices, pink);
+    circleModelTouch = initVertexBufferForLaterUse(gl, vertices, pink);
+    circleModelGrab = initVertexBufferForLaterUse(gl, vertices, pink);
+    circle.setIdentity();
+    circle.translate(0.5, -0.5, 0.0);
+
     document.addEventListener('keydown', function(event) {
         switch(event.key) {
             case 'ArrowUp':
@@ -202,10 +249,6 @@ function draw(gl){
     var yellow = [ 1.0, 0.84, 0.35, 1.0, 0.84, 0.35, 1.0, 0.84, 0.35, 1.0, 0.84, 0.35 ];
     var gray = [ 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6 ];
 
-    // 圓形
-    circle.setIdentity();
-    circle.translate(0.5, -0.5, 0.0);
-
     // 底座
     square_position = initArrayBuffer(gl, new Float32Array(rectVertices), 2, gl.FLOAT, 'a_Position');
     square_color = initArrayBuffer(gl, new Float32Array(navyBlue), 3, gl.FLOAT, 'a_Color');
@@ -258,7 +301,7 @@ function draw(gl){
     square_color = initArrayBuffer(gl, new Float32Array(yellow), 3, gl.FLOAT, 'a_Color');
     gl.uniformMatrix4fv(u_modelMatrix, false, right_joint_2.elements);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, rectVertices.length/2);
-    //// 關節 + 三角形
+    //// 關節 + 爪子
     right_joint_2.translate(0.7, 0.0, 0.0);
     right_joint_2.scale(0.2, 0.8, 0.0);
     right_joint_2.rotate(joint3, 0, 0);
@@ -361,15 +404,25 @@ function draw(gl){
     var distance = Math.sqrt(Math.pow(robotX - circleX, 2) + Math.pow(robotY - circleY, 2));
     if (distance <= circleRadius) {
         canGrab = true;
-        if (grab) {
+        if (grab) { // 深綠色
             circle.setTranslate(robotX, robotY, 0);
+            initAttributeVariable(gl, program.a_Position, circleModelGrab.vertexBuffer);
+            initAttributeVariable(gl, program.a_Color, circleModelGrab.colorBuffer);
+        } else { // 淺綠色
+            initAttributeVariable(gl, program.a_Position, circleModelTouch.vertexBuffer);
+            initAttributeVariable(gl, program.a_Color, circleModelTouch.colorBuffer);
+        }
+    } else {
+        canGrab = false;
+        if (!grab) {
+            initAttributeVariable(gl, program.a_Position, circleModel.vertexBuffer);
+            initAttributeVariable(gl, program.a_Color, circleModel.colorBuffer);
         }
     }
     
     if (grab) {
         circle.setTranslate(robotX, robotY, 0);
     }
-
     
     drawCircleAtPosition(gl, circle, [1.0, 0.58, 0.85], 0.08, 50, false);
 }
