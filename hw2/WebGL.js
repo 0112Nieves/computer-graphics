@@ -104,7 +104,10 @@ var transformMat = new Matrix4();
 var matStack = [];
 var transformationX = -0.5;
 var transformationY = -0.5;
-var scale = 0.75;
+var scale = 0.7;
+var joint1 = 0.0;
+var joint2 = 0.0;
+var joint3 = 0.9;
 var u_modelMatrix;
 function pushMatrix(){
     matStack.push(new Matrix4(transformMat));
@@ -112,6 +115,40 @@ function pushMatrix(){
 function popMatrix(){
     transformMat = matStack.pop();
 }
+
+function updateJointAngles(joint1, joint2, joint3) {
+    // 將這些值傳遞給 WebGL.js，更新 WebGL 中的變數
+    // 假設 WebGL.js 中有三個變數來處理這些關節的旋轉
+    window.joint1Angle = joint1;
+    window.joint2Angle = joint2;
+    window.joint3Angle = joint3;
+
+    // 這裡可以調用 WebGL 渲染更新函數
+    // 假設 WebGL.js 中有一個函數 updateScene() 來更新場景
+    updateScene();
+}
+
+// 當使用者改變範圍條時，實時更新變數
+document.getElementById('joint1').addEventListener('input', function() {
+    let joint1 = parseInt(this.value);
+    let joint2 = parseInt(document.getElementById('joint2').value);
+    let joint3 = parseInt(document.getElementById('joint3').value);
+    updateJointAngles(joint1, joint2, joint3);
+});
+
+document.getElementById('joint2').addEventListener('input', function() {
+    let joint1 = parseInt(document.getElementById('joint1').value);
+    let joint2 = parseInt(this.value);
+    let joint3 = parseInt(document.getElementById('joint3').value);
+    updateJointAngles(joint1, joint2, joint3);
+});
+
+document.getElementById('joint3').addEventListener('input', function() {
+    let joint1 = parseInt(document.getElementById('joint1').value);
+    let joint2 = parseInt(document.getElementById('joint2').value);
+    let joint3 = parseInt(this.value);
+    updateJointAngles(joint1, joint2, joint3);
+});
 
 function main(){
     var canvas = document.getElementById('webgl');
@@ -149,12 +186,24 @@ function main(){
             }
         }
         else if (event.deltaY > 0) {
-            if (scale > 0.5) {
+            if (scale > 0.3) {
                 scale -= 0.05;
             }
         }
     });
-    
+    document.getElementById('joint1').addEventListener('input', function() {
+        joint1 = parseInt(this.value);
+        joint1 /= 10;
+    });
+    document.getElementById('joint2').addEventListener('input', function() {
+        joint2 = parseInt(this.value);
+        joint2 /= 10;
+    });
+    document.getElementById('joint3').addEventListener('input', function() {
+        joint3 = parseInt(this.value);
+        joint3 /= 10;
+    });
+
     var tick = function() {
         draw(gl);
         requestAnimationFrame(tick);
@@ -208,23 +257,25 @@ function draw(gl){
     transformMat.scale(0.50, 0.28, 0.0);
     var left_joint = new Matrix4(transformMat);
     var right_joint_1 = new Matrix4(transformMat);
-    gl.uniformMatrix4fv(u_modelMatrix, false, transformMat.elements);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, rectVertices.length/2);
     //// 第一個長方形
-    right_joint_1.translate(0.75, 0.15, 0.0);
+    right_joint_1.rotate(joint1, 0.0, 0.0);
+    right_joint_1.translate(0.7, 0.15, 0.0);
     right_joint_1.scale(0.5, 0.2, 0.0);
     square_color = initArrayBuffer(gl, new Float32Array(yellow), 3, gl.FLOAT, 'a_Color');
     gl.uniformMatrix4fv(u_modelMatrix, false, right_joint_1.elements);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, rectVertices.length/2);
+    square_color = initArrayBuffer(gl, new Float32Array(orange), 3, gl.FLOAT, 'a_Color');
+    gl.uniformMatrix4fv(u_modelMatrix, false, transformMat.elements);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, rectVertices.length/2);
     right_joint_1.translate(0.5, 0.0, 0.0);
     right_joint_1.scale(0.04, 0.7, 0.0);
     //// 關節 + 第二個長方形
     var right_joint_2 = new Matrix4(right_joint_1);
-    right_joint_2.translate(0.5, 0.0, 0.0);
     right_joint_2.scale(4.0, 1.0, 0.0);
     drawCircleAtPosition(gl, right_joint_2, [0.03, 0.12, 0.43], 1.0, 50, false);
-    right_joint_2.translate(3.5, 0.0, 0.0);
-    right_joint_2.scale(5.0, 1.5, 0.0);
+    right_joint_2.rotate(joint2, 0.0, 0.0);
+    right_joint_2.translate(4.0, 0.0, 0.0);
+    right_joint_2.scale(6.0, 1.5, 0.0);
     square_position = initArrayBuffer(gl, new Float32Array(rectVertices), 2, gl.FLOAT, 'a_Position');
     square_color = initArrayBuffer(gl, new Float32Array(yellow), 3, gl.FLOAT, 'a_Color');
     gl.uniformMatrix4fv(u_modelMatrix, false, right_joint_2.elements);
@@ -233,6 +284,7 @@ function draw(gl){
     right_joint_2.scale(5.0, 1.3, 0.0);
     //// 關節 + 三角形
     var right_joint_3 = new Matrix4(right_joint_2);
+    right_joint_2.rotate(joint3, 0.0, 0.0);
     right_joint_3.translate(-0.6, 0.0, 0.0);
     right_joint_3.scale(0.04, 0.5, 0.0);
     drawCircleAtPosition(gl, right_joint_3, [0.03, 0.12, 0.43], 1.0, 50, false);
