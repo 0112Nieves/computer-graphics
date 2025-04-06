@@ -107,7 +107,7 @@ var transformationY = -0.5;
 var scale = 0.7;
 var joint1 = 0.0;
 var joint2 = 0.0;
-var joint3 = 0.9;
+var joint3 = 15.0;
 var u_modelMatrix;
 function pushMatrix(){
     matStack.push(new Matrix4(transformMat));
@@ -115,40 +115,6 @@ function pushMatrix(){
 function popMatrix(){
     transformMat = matStack.pop();
 }
-
-function updateJointAngles(joint1, joint2, joint3) {
-    // 將這些值傳遞給 WebGL.js，更新 WebGL 中的變數
-    // 假設 WebGL.js 中有三個變數來處理這些關節的旋轉
-    window.joint1Angle = joint1;
-    window.joint2Angle = joint2;
-    window.joint3Angle = joint3;
-
-    // 這裡可以調用 WebGL 渲染更新函數
-    // 假設 WebGL.js 中有一個函數 updateScene() 來更新場景
-    updateScene();
-}
-
-// 當使用者改變範圍條時，實時更新變數
-document.getElementById('joint1').addEventListener('input', function() {
-    let joint1 = parseInt(this.value);
-    let joint2 = parseInt(document.getElementById('joint2').value);
-    let joint3 = parseInt(document.getElementById('joint3').value);
-    updateJointAngles(joint1, joint2, joint3);
-});
-
-document.getElementById('joint2').addEventListener('input', function() {
-    let joint1 = parseInt(document.getElementById('joint1').value);
-    let joint2 = parseInt(this.value);
-    let joint3 = parseInt(document.getElementById('joint3').value);
-    updateJointAngles(joint1, joint2, joint3);
-});
-
-document.getElementById('joint3').addEventListener('input', function() {
-    let joint1 = parseInt(document.getElementById('joint1').value);
-    let joint2 = parseInt(document.getElementById('joint2').value);
-    let joint3 = parseInt(this.value);
-    updateJointAngles(joint1, joint2, joint3);
-});
 
 function main(){
     var canvas = document.getElementById('webgl');
@@ -197,7 +163,7 @@ function main(){
     });
     document.getElementById('joint2').addEventListener('input', function() {
         joint2 = parseInt(this.value);
-        joint2 /= 10;
+        joint2 /= 5;
     });
     document.getElementById('joint3').addEventListener('input', function() {
         joint3 = parseInt(this.value);
@@ -219,14 +185,15 @@ function draw(gl){
     u_modelMatrix = gl.getUniformLocation(gl.getParameter(gl.CURRENT_PROGRAM), 'u_modelMatrix');
     
     var rectVertices = [ -0.5, 0.5, 0.5, 0.5, -0.5, -0.5, 0.5, -0.5 ]; 
-    var triVertices = [ 0.0, 0.5, -0.5, -0.5, 0.5, -0.5 ];
+    clipVertices1 = [ 0.3, 0.0, 0.3, -0.3, 0.2, -0.3, 0.2, -0.1, 0.0, -0.1, 0.0, 0.0 ];
+    clipVertices2 = [ -0.3, 0.0, -0.3, -0.3, -0.2, -0.3, -0.2, -0.1, 0.0, -0.1, 0.0, 0.0 ];
 
     var orange = [ 1.0, 0.3, 0.2, 1.0, 0.3, 0.2, 1.0, 0.3, 0.2, 1.0, 0.3, 0.2 ];
     var navyBlue = [ 0.0, 0.6, 0.6, 0.0, 0.6, 0.6, 0.0, 0.6, 0.6, 0.0, 0.6, 0.6 ];
     var navyDarkBlue = [ 0.0, 0.4, 0.4, 0.0, 0.4, 0.4, 0.0, 0.4, 0.4, 0.0, 0.4, 0.4 ];
     var darkBlue = [ 0.03, 0.12, 0.43, 0.03, 0.12, 0.43, 0.03, 0.12, 0.43, 0.03, 0.12, 0.43 ];
     var yellow = [ 1.0, 0.84, 0.35, 1.0, 0.84, 0.35, 1.0, 0.84, 0.35, 1.0, 0.84, 0.35 ];
-    var gray = [ 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6 ];
+    var gray = [ 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6 ];
 
     // 底座
     square_position = initArrayBuffer(gl, new Float32Array(rectVertices), 2, gl.FLOAT, 'a_Position');
@@ -280,20 +247,20 @@ function draw(gl){
     square_color = initArrayBuffer(gl, new Float32Array(yellow), 3, gl.FLOAT, 'a_Color');
     gl.uniformMatrix4fv(u_modelMatrix, false, right_joint_2.elements);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, rectVertices.length/2);
-    right_joint_2.translate(3.5, 0.0, 0.0);
-    right_joint_2.scale(5.0, 1.3, 0.0);
     //// 關節 + 三角形
+    right_joint_2.translate(0.7, 0.0, 0.0);
+    right_joint_2.scale(0.2, 0.8, 0.0);
+    right_joint_2.rotate(joint3, 0, 0);
     var right_joint_3 = new Matrix4(right_joint_2);
-    right_joint_2.rotate(joint3, 0.0, 0.0);
-    right_joint_3.translate(-0.6, 0.0, 0.0);
-    right_joint_3.scale(0.04, 0.5, 0.0);
     drawCircleAtPosition(gl, right_joint_3, [0.03, 0.12, 0.43], 1.0, 50, false);
-    triangle_position = initArrayBuffer(gl, new Float32Array(triVertices), 2, gl.FLOAT, 'a_Position');
-    triangle_color = initArrayBuffer(gl, new Float32Array(gray), 3, gl.FLOAT, 'a_Color');
-    right_joint_3.translate(1.0, 0.0, 0.0);
-    right_joint_3.scale(2.2, 2.2, 0.0);
+    right_joint_3.scale(8.0, 8.0, 0.0);
+    right_joint_3.translate(0.4, 0.0, 0.0);
+    clip_position1 = initArrayBuffer(gl, new Float32Array(clipVertices1), 2, gl.FLOAT, 'a_Position');
+    gl.drawArrays(gl.TRIANGLE_FAN, 0, clipVertices1.length / 2);
+    clip_position2 = initArrayBuffer(gl, new Float32Array(clipVertices2), 2, gl.FLOAT, 'a_Position');
+    clip_color = initArrayBuffer(gl, new Float32Array(gray), 3, gl.FLOAT, 'a_Color');
     gl.uniformMatrix4fv(u_modelMatrix, false, right_joint_3.elements);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.drawArrays(gl.TRIANGLE_FAN, 0, clipVertices2.length / 2);
     //// 左手臂
     left_joint.translate(-0.35, 0.15, 0.0);
     left_joint.scale(0.09, 0.15, 1.0);
