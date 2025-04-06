@@ -102,6 +102,9 @@ function drawCircleAtPosition(gl, transformMat, color = [1.0, 0.3, 0.2], radius 
 
 var transformMat = new Matrix4();
 var matStack = [];
+var transformationX = -0.5;
+var transformationY = -0.5;
+var scale = 0.75;
 var u_modelMatrix;
 function pushMatrix(){
     matStack.push(new Matrix4(transformMat));
@@ -119,7 +122,47 @@ function main(){
     }
 
     program = compileShader(gl, VSHADER_SOURCE, FSHADER_SOURCE);
+    document.addEventListener('keydown', function(event) {
+        switch(event.key) {
+            case 'ArrowUp':
+                if(transformationY <= 0.75)
+                    transformationY += 0.05;
+                break;
+            case 'ArrowDown':
+                if(transformationY >= -1.0)
+                    transformationY -= 0.05;
+                break;
+            case 'ArrowLeft':
+                if(transformationX >= -1.0)
+                    transformationX -= 0.05;
+                break;
+            case 'ArrowRight':
+                if(transformationX <= 1.0)
+                    transformationX += 0.05;
+                break;
+        }
+    });
+    document.addEventListener('wheel', function(event) {
+        if (event.deltaY < 0) {
+            if (scale < 2.0) {
+                scale += 0.05;
+            }
+        }
+        else if (event.deltaY > 0) {
+            if (scale > 0.5) {
+                scale -= 0.05;
+            }
+        }
+    });
+    
+    var tick = function() {
+        draw(gl);
+        requestAnimationFrame(tick);
+    }
+    tick();
+}
 
+function draw(gl){
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -140,7 +183,8 @@ function main(){
     square_position = initArrayBuffer(gl, new Float32Array(rectVertices), 2, gl.FLOAT, 'a_Position');
     square_color = initArrayBuffer(gl, new Float32Array(navyBlue), 3, gl.FLOAT, 'a_Color');
     transformMat.setIdentity();
-    transformMat.translate(0.0, -0.5, 0.0);
+    transformMat.translate(transformationX, transformationY, 0.0);
+    transformMat.scale(scale, scale, 0.0);
     pushMatrix();
     transformMat.scale(0.7, 0.1, 0.0);
     gl.uniformMatrix4fv(u_modelMatrix, false, transformMat.elements);
@@ -242,13 +286,13 @@ function main(){
     pushMatrix();
     transformMat.translate(-0.07, 0.0, 0.0);
     transformMat.scale(0.7, 0.8, 0.0);
-    drawCircleAtPosition(gl, transformMat, [0.976, 0.945, 0.878], 0.03, 40, false); // 綠色圓
+    drawCircleAtPosition(gl, transformMat, [0.976, 0.945, 0.878], 0.03, 40, false);
     popMatrix();
 
     pushMatrix();
     transformMat.translate(0.07, 0.0, 0.0);
     transformMat.scale(0.7, 0.8, 0.0);
-    drawCircleAtPosition(gl, transformMat, [0.976, 0.945, 0.878], 0.03, 40, false); // 綠色圓
+    drawCircleAtPosition(gl, transformMat, [0.976, 0.945, 0.878], 0.03, 40, false);
     popMatrix();
 
     // 天線 + 觸角
@@ -278,5 +322,4 @@ function main(){
     antennaLeftMat.scale(0.03, 0.03, 1.0);
     drawCircleAtPosition(gl, antennaLeftMat, [0.0, 0.6, 0.6], 1.0, 40, false);
     popMatrix();
-
 }
