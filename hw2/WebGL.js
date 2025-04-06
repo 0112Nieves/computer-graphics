@@ -126,14 +126,15 @@ function main(){
     gl.useProgram(program);
     u_modelMatrix = gl.getUniformLocation(gl.getParameter(gl.CURRENT_PROGRAM), 'u_modelMatrix');
     
-    rectVertices = [ -0.5, 0.5, 0.5, 0.5, -0.5, -0.5, 0.5, -0.5 ]; 
-    triVertices = [ 0.0, 0.5, -0.5, -0.5, 0.5, -0.5 ];
+    var rectVertices = [ -0.5, 0.5, 0.5, 0.5, -0.5, -0.5, 0.5, -0.5 ]; 
+    var triVertices = [ 0.0, 0.5, -0.5, -0.5, 0.5, -0.5 ];
 
     var orange = [ 1.0, 0.3, 0.2, 1.0, 0.3, 0.2, 1.0, 0.3, 0.2, 1.0, 0.3, 0.2 ];
     var navyBlue = [ 0.0, 0.6, 0.6, 0.0, 0.6, 0.6, 0.0, 0.6, 0.6, 0.0, 0.6, 0.6 ];
     var navyDarkBlue = [ 0.0, 0.4, 0.4, 0.0, 0.4, 0.4, 0.0, 0.4, 0.4, 0.0, 0.4, 0.4 ];
     var darkBlue = [ 0.03, 0.12, 0.43, 0.03, 0.12, 0.43, 0.03, 0.12, 0.43, 0.03, 0.12, 0.43 ];
     var yellow = [ 1.0, 0.84, 0.35, 1.0, 0.84, 0.35, 1.0, 0.84, 0.35, 1.0, 0.84, 0.35 ];
+    var gray = [ 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6 ];
 
     // 底座
     square_position = initArrayBuffer(gl, new Float32Array(rectVertices), 2, gl.FLOAT, 'a_Position');
@@ -191,8 +192,12 @@ function main(){
     right_joint_3.translate(-0.6, 0.0, 0.0);
     right_joint_3.scale(0.04, 0.5, 0.0);
     drawCircleAtPosition(gl, right_joint_3, [0.03, 0.12, 0.43], 1.0, 50, false);
-    gl.uniformMatrix4fv(u_modelMatrix, false, transformMat.elements);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, rectVertices.length/2);
+    triangle_position = initArrayBuffer(gl, new Float32Array(triVertices), 2, gl.FLOAT, 'a_Position');
+    triangle_color = initArrayBuffer(gl, new Float32Array(gray), 3, gl.FLOAT, 'a_Color');
+    right_joint_3.translate(1.0, 0.0, 0.0);
+    right_joint_3.scale(2.2, 2.2, 0.0);
+    gl.uniformMatrix4fv(u_modelMatrix, false, right_joint_3.elements);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
     //// 左手臂
     left_joint.translate(-0.35, 0.15, 0.0);
     left_joint.scale(0.09, 0.15, 1.0);
@@ -204,7 +209,7 @@ function main(){
     gl.uniformMatrix4fv(u_modelMatrix, false, left_joint.elements);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, rectVertices.length/2);
     popMatrix();
-    drawCircleAtCurrentPosition(gl, right_joint_3);
+    
 
     // 脖子
     square_position = initArrayBuffer(gl, new Float32Array(rectVertices), 2, gl.FLOAT, 'a_Position');
@@ -274,38 +279,4 @@ function main(){
     drawCircleAtPosition(gl, antennaLeftMat, [0.0, 0.6, 0.6], 1.0, 40, false);
     popMatrix();
 
-}
-
-// drawCircleAtCurrentPosition(gl, transformMat);
-
-function drawCircleAtCurrentPosition(gl, transformMat) {
-    // 定義圓形的頂點資料 (用三角形近似圓形)
-    var numSegments = 30; // 你可以調整這個值來增加圓形的平滑度
-    var radius = 0.05; // 圓的半徑
-    var circleVertices = [];
-    
-    // 計算圓形的頂點
-    for (var i = 0; i < numSegments; i++) {
-        var angle = (i / numSegments) * 2 * Math.PI;
-        var x = radius * Math.cos(angle);
-        var y = radius * Math.sin(angle);
-        circleVertices.push(x);
-        circleVertices.push(y);
-    }
-
-    // 定義紅色的顏色資料
-    var redColor = [];
-    for (var i = 0; i < numSegments; i++) {
-        redColor.push(1.0); // R
-        redColor.push(0.0); // G
-        redColor.push(0.0); // B
-    }
-
-    // 初始化緩衝區
-    var square_position = initArrayBuffer(gl, new Float32Array(circleVertices), 2, gl.FLOAT, 'a_Position');
-    var square_color = initArrayBuffer(gl, new Float32Array(redColor), 3, gl.FLOAT, 'a_Color');
-
-    // 繪製圓形
-    gl.uniformMatrix4fv(u_modelMatrix, false, transformMat.elements);
-    gl.drawArrays(gl.TRIANGLE_FAN, 0, numSegments); // 使用 TRIANGLE_FAN 來繪製圓形
 }
