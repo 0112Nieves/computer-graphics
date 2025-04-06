@@ -101,6 +101,7 @@ function drawCircleAtPosition(gl, transformMat, color = [1.0, 0.3, 0.2], radius 
 
 
 var transformMat = new Matrix4();
+var circle = new Matrix4();
 var matStack = [];
 var transformationX = -0.5;
 var transformationY = -0.5;
@@ -108,6 +109,9 @@ var scale = 0.7;
 var joint1 = 0.0;
 var joint2 = 0.0;
 var joint3 = 15.0;
+var grab = false;
+var canGrab = false;
+const circleRadius = 0.08;
 var u_modelMatrix;
 function pushMatrix(){
     matStack.push(new Matrix4(transformMat));
@@ -142,6 +146,9 @@ function main(){
             case 'ArrowRight':
                 if(transformationX <= 1.0)
                     transformationX += 0.05;
+                break;
+            case ' ':
+                if(canGrab) grab = !grab;
                 break;
         }
     });
@@ -194,6 +201,10 @@ function draw(gl){
     var darkBlue = [ 0.03, 0.12, 0.43, 0.03, 0.12, 0.43, 0.03, 0.12, 0.43, 0.03, 0.12, 0.43 ];
     var yellow = [ 1.0, 0.84, 0.35, 1.0, 0.84, 0.35, 1.0, 0.84, 0.35, 1.0, 0.84, 0.35 ];
     var gray = [ 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6 ];
+
+    // 圓形
+    circle.setIdentity();
+    circle.translate(0.5, -0.5, 0.0);
 
     // 底座
     square_position = initArrayBuffer(gl, new Float32Array(rectVertices), 2, gl.FLOAT, 'a_Position');
@@ -341,4 +352,24 @@ function draw(gl){
     antennaLeftMat.scale(0.03, 0.03, 1.0);
     drawCircleAtPosition(gl, antennaLeftMat, [0.0, 0.6, 0.6], 1.0, 40, false);
     popMatrix();
+
+    var robotX = right_joint_3.elements[12];
+    var robotY = right_joint_3.elements[13];
+    var circleX = circle.elements[12];
+    var circleY = circle.elements[13];
+
+    var distance = Math.sqrt(Math.pow(robotX - circleX, 2) + Math.pow(robotY - circleY, 2));
+    if (distance <= circleRadius) {
+        canGrab = true;
+        if (grab) {
+            circle.setTranslate(robotX, robotY, 0);
+        }
+    }
+    
+    if (grab) {
+        circle.setTranslate(robotX, robotY, 0);
+    }
+
+    
+    drawCircleAtPosition(gl, circle, [1.0, 0.58, 0.85], 0.08, 50, false);
 }
