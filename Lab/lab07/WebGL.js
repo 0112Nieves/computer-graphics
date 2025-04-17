@@ -231,13 +231,23 @@ async function main(){
     ////cube
     //TODO-1: create vertices for the cube whose edge length is 2.0 (or 1.0 is also fine)
     //F: Face, T: Triangle, V: vertex (XYZ)
-    cubeVertices = [//F1_T1_V1,  F1_T1_V2,  F1_T1_V3,  F1_T2_V4,  F1_T2_V5,  F1_T2_V6,   //this row for the face z = 1.0
-                    //F2_T1_V1,  F2_T1_V2,  F2_T1_V3,  F2_T2_V4,  F2_T2_V5,  F2_T2_V6,   //this row for the face x = 1.0
-                    //F3_T1_V1,  F3_T1_V2,  F3_T1_V3,  F3_T2_V4,  F3_T2_V5,  F3_T2_V6,   //this row for the face y = 1.0
-                    //F4_T1_V1,  F4_T1_V2,  F4_T1_V3,  F4_T2_V4,  F4_T2_V5,  F4_T2_V6,   //this row for the face x = -1.0
-                    //F5_T1_V1,  F5_T1_V2,  F5_T1_V3,  F5_T2_V4,  F5_T2_V5,  F5_T2_V6,   //this row for the face y = -1.0
-                    //F6_T1_V1,  F6_T1_V2,  F6_T1_V3,  F6_T2_V4,  F6_T2_V5,  F6_T2_V6,   //this row for the face z = -1.0
-                  ]
+    var V0 = [1, 1, 1];
+    var V1 = [-1, 1, 1];
+    var V2 = [-1, -1, 1];
+    var V3 = [1, -1, 1];
+    var V4 = [1, -1, -1];
+    var V5 = [1, 1, -1];
+    var V6 = [-1, 1, -1];
+    var V7 = [-1, -1, -1];
+    cubeVertices = [
+      [V5, V4, V7, V5, V7, V6],
+      [V0, V3, V4, V5, V0, V4],
+      [V5, V6, V1, V5, V1, V0],
+      [V1, V7, V2, V1, V6, V7],
+      [V2, V4, V3, V7, V4, V2],
+      [V1, V2, V0, V0, V2, V3],
+    ];
+    cubeVertices = cubeVertices.flat(2);
     cubeNormals = getNormalOnVertices(cubeVertices);
     let o = initVertexBufferForLaterUse(gl, cubeVertices, cubeNormals, null);
     cube.push(o);
@@ -268,24 +278,32 @@ async function main(){
 }
 
 /////Call drawOneObject() here to draw all object one by one 
-////   (setup the model matrix and color to draw)
+////   (setup the model matrix and color to draw)drawOneObject
 function draw(){
     gl.clearColor(0,0,0,1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    let mdlMatrix = new Matrix4(); //model matrix of objects
+    let mdlMatrix_cude = new Matrix4(); //model matrix of objects
+    let mdlMatrix_mario = new Matrix4();
+    let mdlMatrix_sonic = new Matrix4();
 
     //Cube (ground)
     //TODO-1: set mdlMatrix for the cube
-    drawOneObject(cube, mdlMatrix, 1.0, 0.4, 0.4);
+    mdlMatrix_cude.scale(2.0, 0.2, 2.0);
+    drawOneObject(cube, mdlMatrix_cude, 1.0, 0.4, 0.4);
 
     //mario
     //TODO-2: set mdlMatrix for mario
-    //drawOneObject(mario, mdlMatrix, 0.4, 1.0, 0.4);
+    mdlMatrix_mario.translate(-1.0, 0.8, -1.0);
+    mdlMatrix_mario.scale(0.01, 0.01, 0.01);
+    drawOneObject(mario, mdlMatrix_mario, 0.4, 1.0, 0.4);
 
     //sonic
     //TODO-3: set mdlMatrix for sonic (include rotation and movement)
-    //drawOneObject(sonic, mdlMatrix, 0.4, 0.4, 1.0);
+    mdlMatrix_sonic.translate(moveDistance, 0.2, 0.0);
+    mdlMatrix_sonic.rotate(rotateAngle, 0.0, 1.0, 0.0);
+    mdlMatrix_sonic.scale(0.05, 0.05, 0.05);
+    drawOneObject(sonic, mdlMatrix_sonic, 0.4, 0.4, 1.0);
 }
 
 //obj: the object components
