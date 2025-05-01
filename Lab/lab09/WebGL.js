@@ -76,6 +76,7 @@ var FSHADER_QUAD_SOURCE = `
     uniform sampler2D u_ShadowMap;
     void main(){ 
       //TODO-2: look up the depth from u_ShaodowMap and draw on quad (just one line)
+      gl_FragColor = texture2D(u_ShadowMap, vec2(gl_FragCoord.xy/800.0));
     }
 `;
 
@@ -310,11 +311,12 @@ function draw(){
     drawOneObjectOnScreen(marioObj, marioMdlMatrix, marioMvpFromLight, 0.4, 1.0, 0.4);
   }else{
     //TODO-1:
-    //draw the shadow map (the quad)
-    //active the quadProgram
-    //switch the destination back to normal canvas color buffer
-    //pass fbo.texture into the quadProgram
-    //draw the quad ()
+    gl.useProgram(quadProgram); //active the quadProgram
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null); //switch the destination back to normal canvas color buffer
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, fbo.texture); //pass fbo.texture into the quadProgram
+    initAttributeVariable(gl, quadProgram.a_Position, quadObj.vertexBuffer);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 }
 
