@@ -280,19 +280,18 @@ function draw(gl){
     var right_joint_1 = new Matrix4(transformMat);
     //// 第一個長方形
     right_joint_1.rotate(joint1, 0.0, 0.0);
-    right_joint_1.translate(0.7, 0.15, 0.0);
-    right_joint_1.scale(0.5, 0.2, 0.0);
+    right_joint_1.translate(0.6, 0.15, 0.0);
+    right_joint_1.scale(0.6, 0.2, 1.0);
     square_color = initArrayBuffer(gl, new Float32Array(yellow), 3, gl.FLOAT, 'a_Color');
     gl.uniformMatrix4fv(u_modelMatrix, false, right_joint_1.elements);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, rectVertices.length/2);
     square_color = initArrayBuffer(gl, new Float32Array(orange), 3, gl.FLOAT, 'a_Color');
     gl.uniformMatrix4fv(u_modelMatrix, false, transformMat.elements);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, rectVertices.length/2);
-    right_joint_1.translate(0.5, 0.0, 0.0);
-    right_joint_1.scale(0.04, 0.7, 0.0);
     //// 關節 + 第二個長方形
     var right_joint_2 = new Matrix4(right_joint_1);
-    right_joint_2.scale(4.0, 1.0, 0.0);
+    right_joint_2.translate(0.5, 0.0, 0.0);
+    right_joint_2.scale(0.2, 0.8, 0.0);
     drawCircleAtPosition(gl, right_joint_2, [0.03, 0.12, 0.43], 1.0, 50, false);
     right_joint_2.rotate(joint2, 0.0, 0.0);
     right_joint_2.translate(4.0, 0.0, 0.0);
@@ -402,7 +401,7 @@ function draw(gl){
     var circleY = circle.elements[13];
 
     var distance = Math.sqrt(Math.pow(robotX - circleX, 2) + Math.pow(robotY - circleY, 2));
-    if (distance <= circleRadius) {
+    if (distance <= circleRadius + 0.02) {
         canGrab = true;
         if (grab) { // 深綠色
             circle.setTranslate(robotX, robotY, 0);
