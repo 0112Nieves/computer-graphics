@@ -182,8 +182,8 @@ var rotateAngle = 0;
 
 var tx = 0;
 var tz = 0;
-var ox = 1.5;
-var oz = 0;
+var ox = 0;
+var oz = 1.5;
 var zoom = 0;
 let maxZ = 30;
 
@@ -270,15 +270,15 @@ async function main(){
 
     document.getElementById('CarJoint1').addEventListener('input', function() {
         CarJoint1 = parseInt(this.value);
-        CarJoint1 /= 10;
+        CarJoint1 /= 2;
     });
     document.getElementById('CarJoint2').addEventListener('input', function() {
         CarJoint2 = parseInt(this.value);
-        CarJoint2 /= 10;
+        CarJoint2 /= 3;
     });
     document.getElementById('CarJoint3').addEventListener('input', function() {
         CarJoint3 = parseInt(this.value);
-        CarJoint3 /= 10;
+        CarJoint3 /= 5;
     });
     document.getElementById('tx').addEventListener('input', function() {
         tx = parseInt(this.value);
@@ -338,36 +338,37 @@ function draw(){
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     let groundMatrix = new Matrix4();
-    let carMdlMatrix = new Matrix4();
+    let CarMatrix = new Matrix4();
     let rbtireMdlMatrix = new Matrix4();
     let lbtireMdlMatrix = new Matrix4();
     let rftireMdlMatrix = new Matrix4();
     let lftireMdlMatrix = new Matrix4();
-    let carboxMdlMatrix = new Matrix4();
-    let arm1MdlMatrix = new Matrix4();
-    let joint1MdlMatrix = new Matrix4();
-    let arm2MdlMatrix = new Matrix4();
-    let joint2MdlMatrix = new Matrix4();
-    let pawMatrix = new Matrix4();
     let Objectbody = new Matrix4();
     let lightMarkerMatrix = new Matrix4();
 
     lightMarkerMatrix.setTranslate(0, 5, 3);
     lightMarkerMatrix.scale(0.1, 0.1, 0.1);
-    drawOneObject(cube, lightMarkerMatrix, 1.0, 0.4, 0.4);
+    drawOneObject(cube, lightMarkerMatrix, 1.0, 1.0, 0.4);
 
     groundMatrix.scale(2.5, 0.2, 2.5);
     drawOneObject(cube, groundMatrix, 1.0, 0.4, 0.4);
 
-    carMdlMatrix.setTranslate(tx, 0, tz);
-    carMdlMatrix.scale(0.5, 0.35, 0.9);
-    carMdlMatrix.translate(0, 2.0, 0);
-    drawOneObject(cube, carMdlMatrix, 0.4, 0.4, 1.0);
+    // Car Body
+    CarMatrix.setTranslate(tx, 0, tz);
+    CarMatrix.translate(0, 0.7, 0);
+    matStack.push(new Matrix4(CarMatrix));
+    CarMatrix.scale(0.5, 0.35, 0.9);
+    drawOneObject(cube, CarMatrix, 0.4, 0.4, 1.0);
+    CarMatrix = matStack.pop();
 
-    carboxMdlMatrix.setTranslate(tx, 1, tz);
-    carboxMdlMatrix.scale(0.4, 0.35, 0.5);
-    drawOneObject(pyramid, carboxMdlMatrix, 0.4, 0.4, 1.0);
+    // Car Top
+    CarMatrix.translate(0.0, 0.5, 0.0);
+    matStack.push(new Matrix4(CarMatrix));
+    CarMatrix.scale(0.45, 0.3, 0.45);
+    drawOneObject(pyramid, CarMatrix, 0.4, 0.4, 1.0);
+    CarMatrix = matStack.pop();
 
+    // Tire
     rbtireMdlMatrix.setTranslate(tx, 0, tz);
     rbtireMdlMatrix.translate(0.55, 0.4, 0.6);
     rbtireMdlMatrix.rotate(-90.0, 0.0, 0.0, 1.0);
@@ -392,31 +393,60 @@ function draw(){
     lftireMdlMatrix.scale(0.02, 0.003, 0.02);
     drawOneObject(cylinder, lftireMdlMatrix, 0.0, 0.0, 0.0);
 
-    arm1MdlMatrix.setTranslate(tx, 0, tz);
-    // arm1MdlMatrix.rotate(CarJoint1, 1.0, 0.0, 0.0);
-    arm1MdlMatrix.translate(0, 1.6, 0.0);
-    arm1MdlMatrix.scale(0.01, 0.01, 0.01);
-    drawOneObject(cylinder, arm1MdlMatrix, 0.4, 1.0, 0.4);
+    // Joint 1
+    CarMatrix.translate(0.0, 0.35, 0.0);
+    CarMatrix.rotate(CarJoint1, 1.0, 0.0, 0.0);
+    matStack.push(new Matrix4(CarMatrix));
+    CarMatrix.scale(0.1, 0.1, 0.1);
+    drawOneObject(sphere, CarMatrix, 1.0, 0.4, 0.4);
+    CarMatrix = matStack.pop();
 
-    joint1MdlMatrix.setTranslate(tx, 1.1, tz);
-    joint1MdlMatrix.translate(0.0, 0.85, 0.0);
-    joint1MdlMatrix.scale(0.1, 0.1, 0.1);
-    drawOneObject(sphere, joint1MdlMatrix, 1.0, 0.4, 0.4);
+    // Arm 1
+    CarMatrix.translate(0.0, 0.65, 0.0);
+    matStack.push(new Matrix4(CarMatrix));
+    CarMatrix.scale(0.01, 0.02, 0.01);
+    drawOneObject(cylinder, CarMatrix, 0.4, 1.0, 0.4);
+    CarMatrix = matStack.pop();
 
-    arm2MdlMatrix.setTranslate(tx, 0.7, tz);
-    arm2MdlMatrix.translate(0, 1.6, 0.0);
-    arm2MdlMatrix.scale(0.01, 0.01, 0.01);
-    drawOneObject(cylinder, arm2MdlMatrix, 0.4, 1.0, 0.4);
+    // Joint 2
+    CarMatrix.translate(0.0, 0.65, 0.0);
+    CarMatrix.rotate(CarJoint2, 1.0, 0.0, 0.0);
+    matStack.push(new Matrix4(CarMatrix));
+    CarMatrix.scale(0.1, 0.1, 0.1);
+    drawOneObject(sphere, CarMatrix, 1.0, 0.4, 0.4);
+    CarMatrix = matStack.pop();
 
-    joint2MdlMatrix.setTranslate(tx, 2.0, tz);
-    joint2MdlMatrix.translate(0.0, 0.65, 0.0);
-    joint2MdlMatrix.scale(0.1, 0.1, 0.1);
-    drawOneObject(sphere, joint2MdlMatrix, 1.0, 0.4, 0.4);
+    // Arm 2
+    CarMatrix.translate(0.0, 0.5, 0.0);
+    matStack.push(new Matrix4(CarMatrix));
+    CarMatrix.scale(0.01, 0.015, 0.01);
+    drawOneObject(cylinder, CarMatrix, 0.4, 1.0, 0.4);
+    CarMatrix = matStack.pop();
 
-    pawMatrix.setTranslate(tx, 2.0, tz);
-    pawMatrix.translate(0.0, 0.85, 0.0);
-    pawMatrix.scale(0.1, 0.1, 0.1);
-    drawOneObject(pyramid, pawMatrix, 0.4, 0.4, 0.4);
+    // Joint 3
+    CarMatrix.translate(0.0, 0.5, 0.0);
+    CarMatrix.rotate(CarJoint3, 1.0, 0.0, 0.0);
+    matStack.push(new Matrix4(CarMatrix));
+    CarMatrix.scale(0.1, 0.1, 0.1);
+    drawOneObject(sphere, CarMatrix, 1.0, 0.4, 0.4);
+    CarMatrix = matStack.pop();
+
+    // Paw
+    CarMatrix.translate(0.0, 0.2, 0.0);
+    matStack.push(new Matrix4(CarMatrix));
+    CarMatrix.scale(0.1, 0.1, 0.1);
+    drawOneObject(pyramid, CarMatrix, 0.4, 0.4, 0.4);
+    CarMatrix = matStack.pop();
+
+    // joint2MdlMatrix.setTranslate(tx, 2.0, tz);
+    // joint2MdlMatrix.translate(0.0, 0.65, 0.0);
+    // joint2MdlMatrix.scale(0.1, 0.1, 0.1);
+    // drawOneObject(sphere, joint2MdlMatrix, 1.0, 0.4, 0.4);
+
+    // pawMatrix.setTranslate(tx, 2.0, tz);
+    // pawMatrix.translate(0.0, 0.85, 0.0);
+    // pawMatrix.scale(0.1, 0.1, 0.1);
+    // drawOneObject(pyramid, pawMatrix, 0.4, 0.4, 0.4);
 
     Objectbody.setTranslate(ox, 0.0, oz);
     Objectbody.translate(0.0, 0.4, 0.0);
