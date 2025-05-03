@@ -1,41 +1,100 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="utf-8" />
-        <title>WebPage Title </title>
-    </head>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>WebGL Robot Scene</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
 
-    <body onload="main()">
-        <canvas id="webgl" width = "800" height = "800">
-            Please use a browser that support "canvas"
-        </canvas>
-        <script src="cuon-matrix.js"></script>
-        <script src="set_mdl.js"></script>
-        <script src="WebGL.js"></script>
-        <div class="Room">
-            Room:
-            <input
-                type="range"
-                min="-29"
-                max="29"
-                value="0"
-                class="slider"
-                id="Room"
-            />
-        <br>
-        </div>
-        <div>
-            <label>Translate-X: <input type="range" id="tx" min="-180" max="180" value="0"></label>
-            <label>Translate-Z: <input type="range" id="tz" min="-180" max="180" value="0"></label>
-        </div>
-        <div>
-            <label>Car Joint 1: <input type="range" id="CarJoint1" min="-180" max="180" value="0"></label>
-            <label>Car Joint 2: <input type="range" id="CarJoint2" min="-180" max="180" value="0"></label>
-            <label>Car Joint 3: <input type="range" id="CarJoint3" min="-180" max="180" value="0"></label>
-        </div>
-        <div>
-            <label>Object Joint Right: <input type="range" id="ObjectJointRight" min="-180" max="180" value="0"></label>
-        <label>Object Joint Left: <input type="range" id="ObjectJointLeft" min="-180" max="180" value="0"></label>
-        </div>
-    </body>
+    #webgl {
+      border: 1px solid #333;
+      margin: 10px;
+    }
+
+    #controls {
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+      width: 250px;
+      background-color: #f5f5f5;
+      border-left: 1px solid #ccc;
+    }
+
+    #controls div {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+  </style>
+</head>
+
+<body onload="main()">
+  <!-- WebGL Canvas -->
+  <canvas id="webgl" width="800" height="800">
+    Please use a browser that supports "canvas"
+  </canvas>
+
+  <!-- Control Panel -->
+  <div id="controls">
+    <div>
+      <label>Zoom:
+        <input type="range" id="zoom" min="5" max="30" value="14">
+      </label>
+    </div>
+    <div>
+      <label>Car X:
+        <input type="range" id="tx" min="-180" max="180" value="0">
+      </label>
+      <label>Car Z:
+        <input type="range" id="tz" min="-180" max="180" value="0">
+      </label>
+    </div>
+    <div>
+        <label>Object X:
+          <input type="range" id="ox" min="-180" max="180" value="90">
+        </label>
+        <label>Object Z:
+          <input type="range" id="oz" min="-180" max="180" value="0">
+        </label>
+      </div>
+    <div>
+      <label>Car Joint 1:
+        <input type="range" id="CarJoint1" min="-180" max="180" value="0">
+      </label>
+      <label>Car Joint 2:
+        <input type="range" id="CarJoint2" min="-180" max="180" value="0">
+      </label>
+      <label>Car Joint 3:
+        <input type="range" id="CarJoint3" min="-180" max="180" value="0">
+      </label>
+    </div>
+    <div>
+      <label>Object Joint Right:
+        <input type="range" id="ObjectJointRight" min="-180" max="180" value="0">
+      </label>
+      <label>Object Joint Left:
+        <input type="range" id="ObjectJointLeft" min="-180" max="180" value="0">
+      </label>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="cuon-matrix.js"></script>
+  <script src="set_mdl.js"></script>
+  <script src="WebGL.js"></script>
+</body>
 </html>

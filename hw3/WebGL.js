@@ -179,9 +179,12 @@ var pyramid = [];
 var moveDistance = 0;
 var rotateAngle = 0;
 
-var room = 0;
 var tx = 0;
 var tz = 0;
+var ox = 1.5;
+var oz = 0;
+var zoom = 0;
+let maxZ = 30;
 
 var CarJoint1 = 0.0;
 var CarJoint2 = 0.0;
@@ -284,6 +287,14 @@ async function main(){
         tz = parseInt(this.value);
         tz /= 90;
     });
+    document.getElementById('ox').addEventListener('input', function() {
+        ox = parseInt(this.value);
+        ox /= 90;
+    });
+    document.getElementById('oz').addEventListener('input', function() {
+        oz = parseInt(this.value);
+        oz /= 90;
+    });
     document.getElementById('ObjectJointRight').addEventListener('input', function() {
         ObjectJointRight = parseInt(this.value);
         ObjectJointRight /= 90;
@@ -291,6 +302,9 @@ async function main(){
     document.getElementById('ObjectJointLeft').addEventListener('input', function() {
         ObjectJointLeft = parseInt(this.value);
         ObjectJointLeft /= 90;
+    });
+    document.getElementById('zoom').addEventListener('input', function() {
+        cameraZ = maxZ - parseFloat(this.value);
     });
 
     var tick = function() {
@@ -400,18 +414,18 @@ function draw(){
     pawMatrix.scale(0.1, 0.1, 0.1);
     drawOneObject(pyramid, pawMatrix, 0.4, 0.4, 0.4);
 
-    Objectbody.setTranslate(tx, 0.0, tz);
-    Objectbody.translate(1.5, 0.4, 0.0);
+    Objectbody.setTranslate(ox, 0.0, oz);
+    Objectbody.translate(0.0, 0.4, 0.0);
     Objectbody.scale(0.2, 0.2, 0.2);
     drawOneObject(sphere, Objectbody, 1.0, 1.0, 0.4);
 
-    Objectright.setTranslate(tx, 0.0, tz);
-    Objectright.translate(1.5, 0.4, -0.3);
+    Objectright.setTranslate(ox, 0.0, oz);
+    Objectright.translate(0.0, 0.4, -0.3);
     Objectright.scale(0.05, 0.05, 0.1);
     drawOneObject(cube, Objectright, 1.0, 1.0, 0.4);
 
-    Objectleft.setTranslate(tx, 0.0, tz);
-    Objectleft.translate(1.5, 0.4, 0.3);
+    Objectleft.setTranslate(ox, 0.0, oz);
+    Objectleft.translate(0.0, 0.4, 0.3);
     Objectleft.scale(0.05, 0.05, 0.1);
     drawOneObject(cube, Objectleft, 1.0, 1.0, 0.4);
 }
