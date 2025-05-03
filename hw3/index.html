@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>WebPage Title </title>
+    </head>
+
+    <body onload="main()">
+        <canvas id="webgl" width = "800" height = "800">
+            Please use a browser that support "canvas"
+        </canvas>
+        <script src="cuon-matrix.js"></script>
+        <script src="set_mdl.js"></script>
+        <script src="WebGL.js"></script>
+        <div class="Room">
+            Room:
+            <input
+                type="range"
+                min="-29"
+                max="29"
+                value="0"
+                class="slider"
+                id="Room"
+            />
+        <br>
+        <div class="CartPosition">
+            Translate-X:
+            <input
+                type="range"
+                min="-300"
+                max="300"
+                value="0"
+                class="slider"
+                id="Translate-X"
+            />
+            Translate-Z:
+            <input
+                type="range"
+                min="-300"
+                max="300"
+                value="0"
+                class="slider"
+                id="Translate-Z"
+            />
+        </div>
+        <div class="CartRotation">
+            Car Joint 1:
+            <input
+                type="range"
+                min="-300"
+                max="300"
+                value="0"
+                class="slider"
+                id="Car Joint 1"
+            />
+            Car Joint 2:
+            <input
+                type="range"
+                min="-300"
+                max="300"
+                value="0"
+                class="slider"
+                id="Car Joint 2"
+            />
+            Car Joint 3:
+            <input
+                type="range"
+                min="-300"
+                max="300"
+                value="0"
+                class="slider"
+                id="Car Joint 3"
+            />
+        </div>
+        <div class="ObjecttRotation">
+            Object Joint 1:
+            <input
+                type="range"
+                min="-300"
+                max="300"
+                value="0"
+                class="slider"
+                id="Object Joint 1"
+            />
+            Object Joint 2:
+            <input
+                type="range"
+                min="-300"
+                max="300"
+                value="0"
+                class="slider"
+                id="Object Joint 2"
+            />
+        </div>
+    </body>
+</html>
