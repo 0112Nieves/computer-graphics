@@ -171,7 +171,7 @@ var mvpMatrix;
 var modelMatrix;
 var normalMatrix;
 var nVertex;
-var cameraX = 3, cameraY = 3, cameraZ = 12;
+var cameraX = 3, cameraY = 3, cameraZ = 16;
 var cube = [];
 var sphere = [];
 var cylinder = [];
@@ -182,6 +182,10 @@ var rotateAngle = 0;
 var room = 0;
 var tx = 0;
 var tz = 0;
+
+var CarJoint1 = 0.0;
+var CarJoint2 = 0.0;
+var CarJoint3 = 0.0;
 
 async function main(){
     canvas = document.getElementById('webgl');
@@ -251,9 +255,6 @@ async function main(){
                                           obj.geometries[i].data.texcoord);
       cylinder.push(o);
     }
-    /////3D model sonic
-    ////cube
-    //TODO-1: create vertices for the cube whose edge length is 2.0 (or 1.0 is also fine)
 
     mvpMatrix = new Matrix4();
     modelMatrix = new Matrix4();
@@ -261,7 +262,32 @@ async function main(){
 
     gl.enable(gl.DEPTH_TEST);
 
-    draw();//draw it once before mouse move
+    document.getElementById('CarJoint1').addEventListener('input', function() {
+        CarJoint1 = parseInt(this.value);
+        CarJoint1 /= 10;
+    });
+    document.getElementById('CarJoint2').addEventListener('input', function() {
+        CarJoint2 = parseInt(this.value);
+        CarJoint2 /= 10;
+    });
+    document.getElementById('CarJoint3').addEventListener('input', function() {
+        CarJoint3 = parseInt(this.value);
+        CarJoint3 /= 10;
+    });
+    document.getElementById('tx').addEventListener('input', function() {
+        tx = parseInt(this.value);
+        tx /= 90;
+    });
+    document.getElementById('tz').addEventListener('input', function() {
+        tz = parseInt(this.value);
+        tz /= 90;
+    });
+
+    var tick = function() {
+        draw(gl);
+        requestAnimationFrame(tick);
+    }
+    tick();
 
     canvas.onmousedown = function(ev){mouseDown(ev)};
     canvas.onmousemove = function(ev){mouseMove(ev)};
@@ -298,11 +324,11 @@ function draw(){
     let arm2MdlMatrix = new Matrix4();
     let joint2MdlMatrix = new Matrix4();
     let pawMatrix = new Matrix4();
-    // let mdlMatrix_mario = new Matrix4();
 
-    groundMatrix.scale(2.0, 0.2, 2.0);
+    groundMatrix.scale(2.5, 0.2, 2.5);
     drawOneObject(cube, groundMatrix, 1.0, 0.4, 0.4);
 
+    carMdlMatrix.setTranslate(tx, 0, tz);
     carMdlMatrix.scale(0.5, 0.35, 0.9);
     carMdlMatrix.translate(0, 2.0, 0);
     drawOneObject(cube, carMdlMatrix, 0.4, 0.4, 1.0);
@@ -336,6 +362,7 @@ function draw(){
     drawOneObject(cylinder, lftireMdlMatrix, 0.0, 0.0, 0.0);
 
     arm1MdlMatrix.setTranslate(tx, 0, tz);
+    arm1MdlMatrix.rotate(CarJoint1, 0.0, 0.0);
     arm1MdlMatrix.translate(0, 1.6, 0.0);
     arm1MdlMatrix.scale(0.01, 0.01, 0.01);
     drawOneObject(cylinder, arm1MdlMatrix, 0.4, 1.0, 0.4);
