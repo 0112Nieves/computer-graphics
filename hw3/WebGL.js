@@ -176,6 +176,7 @@ var cube = [];
 var sphere = [];
 var cylinder = [];
 var pyramid = [];
+var matStack = [];
 var moveDistance = 0;
 var rotateAngle = 0;
 
@@ -297,11 +298,11 @@ async function main(){
     });
     document.getElementById('ObjectJointRight').addEventListener('input', function() {
         ObjectJointRight = parseInt(this.value);
-        ObjectJointRight /= 90;
+        ObjectJointRight /= 10;
     });
     document.getElementById('ObjectJointLeft').addEventListener('input', function() {
         ObjectJointLeft = parseInt(this.value);
-        ObjectJointLeft /= 90;
+        ObjectJointLeft /= 10;
     });
     document.getElementById('zoom').addEventListener('input', function() {
         cameraZ = maxZ - parseFloat(this.value);
@@ -349,8 +350,11 @@ function draw(){
     let joint2MdlMatrix = new Matrix4();
     let pawMatrix = new Matrix4();
     let Objectbody = new Matrix4();
-    let Objectright = new Matrix4();
-    let Objectleft = new Matrix4();
+    let lightMarkerMatrix = new Matrix4();
+
+    lightMarkerMatrix.setTranslate(0, 5, 3);
+    lightMarkerMatrix.scale(0.1, 0.1, 0.1);
+    drawOneObject(cube, lightMarkerMatrix, 1.0, 0.4, 0.4);
 
     groundMatrix.scale(2.5, 0.2, 2.5);
     drawOneObject(cube, groundMatrix, 1.0, 0.4, 0.4);
@@ -389,7 +393,7 @@ function draw(){
     drawOneObject(cylinder, lftireMdlMatrix, 0.0, 0.0, 0.0);
 
     arm1MdlMatrix.setTranslate(tx, 0, tz);
-    // arm1MdlMatrix.rotate(CarJoint1, 0.0, 0.0);
+    // arm1MdlMatrix.rotate(CarJoint1, 1.0, 0.0, 0.0);
     arm1MdlMatrix.translate(0, 1.6, 0.0);
     arm1MdlMatrix.scale(0.01, 0.01, 0.01);
     drawOneObject(cylinder, arm1MdlMatrix, 0.4, 1.0, 0.4);
@@ -419,12 +423,16 @@ function draw(){
     Objectbody.scale(0.2, 0.2, 0.2);
     drawOneObject(sphere, Objectbody, 1.0, 1.0, 0.4);
 
+    var Objectright = new Matrix4(Objectbody);
     Objectright.setTranslate(ox, 0.0, oz);
+    Objectright.rotate(ObjectJointRight, 0.0, 1.0, 0.0);
     Objectright.translate(0.0, 0.4, -0.3);
     Objectright.scale(0.05, 0.05, 0.1);
     drawOneObject(cube, Objectright, 1.0, 1.0, 0.4);
 
+    var Objectleft = new Matrix4(Objectbody);
     Objectleft.setTranslate(ox, 0.0, oz);
+    Objectleft.rotate(ObjectJointLeft, 0.0, 1.0, 0.0);
     Objectleft.translate(0.0, 0.4, 0.3);
     Objectleft.scale(0.05, 0.05, 0.1);
     drawOneObject(cube, Objectleft, 1.0, 1.0, 0.4);
