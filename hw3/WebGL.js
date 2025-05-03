@@ -186,6 +186,8 @@ var tz = 0;
 var CarJoint1 = 0.0;
 var CarJoint2 = 0.0;
 var CarJoint3 = 0.0;
+var ObjectJointRight = 0.0;
+var ObjectJointLeft = 0.0;
 
 async function main(){
     canvas = document.getElementById('webgl');
@@ -282,6 +284,14 @@ async function main(){
         tz = parseInt(this.value);
         tz /= 90;
     });
+    document.getElementById('ObjectJointRight').addEventListener('input', function() {
+        ObjectJointRight = parseInt(this.value);
+        ObjectJointRight /= 90;
+    });
+    document.getElementById('ObjectJointLeft').addEventListener('input', function() {
+        ObjectJointLeft = parseInt(this.value);
+        ObjectJointLeft /= 90;
+    });
 
     var tick = function() {
         draw(gl);
@@ -324,6 +334,9 @@ function draw(){
     let arm2MdlMatrix = new Matrix4();
     let joint2MdlMatrix = new Matrix4();
     let pawMatrix = new Matrix4();
+    let Objectbody = new Matrix4();
+    let Objectright = new Matrix4();
+    let Objectleft = new Matrix4();
 
     groundMatrix.scale(2.5, 0.2, 2.5);
     drawOneObject(cube, groundMatrix, 1.0, 0.4, 0.4);
@@ -362,7 +375,7 @@ function draw(){
     drawOneObject(cylinder, lftireMdlMatrix, 0.0, 0.0, 0.0);
 
     arm1MdlMatrix.setTranslate(tx, 0, tz);
-    arm1MdlMatrix.rotate(CarJoint1, 0.0, 0.0);
+    // arm1MdlMatrix.rotate(CarJoint1, 0.0, 0.0);
     arm1MdlMatrix.translate(0, 1.6, 0.0);
     arm1MdlMatrix.scale(0.01, 0.01, 0.01);
     drawOneObject(cylinder, arm1MdlMatrix, 0.4, 1.0, 0.4);
@@ -386,6 +399,21 @@ function draw(){
     pawMatrix.translate(0.0, 0.85, 0.0);
     pawMatrix.scale(0.1, 0.1, 0.1);
     drawOneObject(pyramid, pawMatrix, 0.4, 0.4, 0.4);
+
+    Objectbody.setTranslate(tx, 0.0, tz);
+    Objectbody.translate(1.5, 0.4, 0.0);
+    Objectbody.scale(0.2, 0.2, 0.2);
+    drawOneObject(sphere, Objectbody, 1.0, 1.0, 0.4);
+
+    Objectright.setTranslate(tx, 0.0, tz);
+    Objectright.translate(1.5, 0.4, -0.3);
+    Objectright.scale(0.05, 0.05, 0.1);
+    drawOneObject(cube, Objectright, 1.0, 1.0, 0.4);
+
+    Objectleft.setTranslate(tx, 0.0, tz);
+    Objectleft.translate(1.5, 0.4, 0.3);
+    Objectleft.scale(0.05, 0.05, 0.1);
+    drawOneObject(cube, Objectleft, 1.0, 1.0, 0.4);
 }
 
 function drawOneObject(obj, mdlMatrix, colorR, colorG, colorB){
