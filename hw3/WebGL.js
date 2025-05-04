@@ -179,6 +179,10 @@ var pyramid = [];
 var matStack = [];
 var moveDistance = 0;
 var rotateAngle = 0;
+var Radius = 0.7;
+
+var grab = false;
+var canGrab = false;
 
 var tx = 0;
 var tz = 0;
@@ -298,14 +302,21 @@ async function main(){
     });
     document.getElementById('ObjectJointRight').addEventListener('input', function() {
         ObjectJointRight = parseInt(this.value);
-        ObjectJointRight /= 10;
+        ObjectJointRight /= 8;
     });
     document.getElementById('ObjectJointLeft').addEventListener('input', function() {
         ObjectJointLeft = parseInt(this.value);
-        ObjectJointLeft /= 10;
+        ObjectJointLeft /= 8;
     });
     document.getElementById('zoom').addEventListener('input', function() {
         cameraZ = maxZ - parseFloat(this.value);
+    });
+
+    document.addEventListener('keydown', (event)=> {    
+        if ( event.key == ' '){
+            if(canGrab) grab = !grab;
+            draw(gl)
+        }
     });
 
     var tick = function() {
@@ -343,7 +354,6 @@ function draw(){
     let lbtireMdlMatrix = new Matrix4();
     let rftireMdlMatrix = new Matrix4();
     let lftireMdlMatrix = new Matrix4();
-    let Objectbody = new Matrix4();
     let lightMarkerMatrix = new Matrix4();
 
     lightMarkerMatrix.setTranslate(0, 5, 3);
@@ -435,32 +445,71 @@ function draw(){
     CarMatrix.translate(0.0, 0.2, 0.0);
     matStack.push(new Matrix4(CarMatrix));
     CarMatrix.scale(0.1, 0.1, 0.1);
-    drawOneObject(pyramid, CarMatrix, 0.4, 0.4, 0.4);
+    drawOneObject(pyramid, CarMatrix, 1.0, 1.0, 0.4);
     CarMatrix = matStack.pop();
 
-    // joint2MdlMatrix.setTranslate(tx, 2.0, tz);
-    // joint2MdlMatrix.translate(0.0, 0.65, 0.0);
-    // joint2MdlMatrix.scale(0.1, 0.1, 0.1);
-    // drawOneObject(sphere, joint2MdlMatrix, 1.0, 0.4, 0.4);
+    // 初始化階段 (建議放在外層初始化一次)
+    let objectPositionMatrix = new Matrix4();  // 物體位置
+    let scaleMatrix = new Matrix4();           // 固定縮放
+    scaleMatrix.setScale(0.2, 0.2, 0.2);
 
-    // pawMatrix.setTranslate(tx, 2.0, tz);
-    // pawMatrix.translate(0.0, 0.85, 0.0);
-    // pawMatrix.scale(0.1, 0.1, 0.1);
-    // drawOneObject(pyramid, pawMatrix, 0.4, 0.4, 0.4);
+    // 更新物體位置矩陣
+    objectPositionMatrix.setIdentity();
+    objectPositionMatrix.setTranslate(ox, 0, oz);
+    objectPositionMatrix.translate(0, 0.4, 0); // 垂直抬高物體
 
-    Objectbody.setTranslate(ox, 0.0, oz);
-    Objectbody.translate(0.0, 0.4, 0.0);
-    Objectbody.scale(0.2, 0.2, 0.2);
-    drawOneObject(sphere, Objectbody, 1.0, 1.0, 0.4);
+    // 計算物體完整變換矩陣
+    let ObjectMatrix = new Matrix4(objectPositionMatrix);
+    ObjectMatrix.multiply(scaleMatrix);
 
-    var Objectright = new Matrix4(Objectbody);
+    // 取得車子與物體的世界座標
+    let carPos = CarMatrix.elements;
+    let carX = carPos[12], carY = carPos[13], carZ = carPos[14];
+
+    let objPos = ObjectMatrix.elements;
+    let objX = objPos[12], objY = objPos[13], objZ = objPos[14];
+
+    let distance = Math.sqrt((carX - objX)**2 + (carY - objY)**2 + (carZ - objZ)**2);
+
+    // 判斷距離與抓取狀態
+    if (distance <= Radius) {
+        canGrab = true;
+    
+        if (grab) {
+            ObjectMatrix.setIdentity();
+            ObjectMatrix.setTranslate(carX, 0, carZ);
+            ObjectMatrix.translate(0, 0.4, 0);
+            ObjectMatrix.scale(0.2, 0.2, 0.2);
+            objPos.x = carX; objPos.z = carZ;
+            ox = carX; oz = carZ;
+        }        
+        else{
+            ObjectMatrix.setIdentity();
+            ObjectMatrix.setTranslate(ox, 0, oz);
+            ObjectMatrix.translate(0, 0.4, 0);
+            ObjectMatrix.scale(0.2, 0.2, 0.2);
+        }
+    } else {
+        canGrab = false;
+    }
+    
+    // 畫物體，根據狀態決定顏色
+    if (grab && distance <= Radius) {
+        drawOneObject(sphere, ObjectMatrix, 0.2, 0.8, 0.2); // 綠色（已抓住）
+    } else if (!grab && distance <= Radius) {
+        drawOneObject(sphere, ObjectMatrix, 0.6, 1.0, 0.6); // 淺綠（可抓但未抓）
+    } else if (!grab && distance > Radius) {
+        drawOneObject(sphere, ObjectMatrix, 1.0, 1.0, 0.4); // 黃色（太遠不能抓）
+    }
+
+    var Objectright = new Matrix4(ObjectMatrix);
     Objectright.setTranslate(ox, 0.0, oz);
     Objectright.rotate(ObjectJointRight, 0.0, 1.0, 0.0);
     Objectright.translate(0.0, 0.4, -0.3);
     Objectright.scale(0.05, 0.05, 0.1);
     drawOneObject(cube, Objectright, 1.0, 1.0, 0.4);
 
-    var Objectleft = new Matrix4(Objectbody);
+    var Objectleft = new Matrix4(ObjectMatrix);
     Objectleft.setTranslate(ox, 0.0, oz);
     Objectleft.rotate(ObjectJointLeft, 0.0, 1.0, 0.0);
     Objectleft.translate(0.0, 0.4, 0.3);
