@@ -1,62 +1,43 @@
-var VSHADER_SOURCE = `
-  attribute vec4 a_Position;
-  varying vec4 v_TexCoord;
-  uniform mat4 u_MvpMatrix;
-  void main() {
-    gl_Position = u_MvpMatrix * a_Position;
-    v_TexCoord = a_Position;
-  } 
-`;
-
-var FSHADER_SOURCE = `
-  precision mediump float;
-  varying vec4 v_TexCoord;
-  uniform samplerCube u_envCubeMap;
-  void main() {
-    gl_FragColor = textureCube(u_envCubeMap, v_TexCoord.stp);
+function compileShader(gl, vShaderText, fShaderText) {
+  //////Build vertex and fragment shader objects
+  var vertexShader = gl.createShader(gl.VERTEX_SHADER)
+  var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER)
+  //The way to  set up shader text source
+  gl.shaderSource(vertexShader, vShaderText)
+  gl.shaderSource(fragmentShader, fShaderText)
+  //compile vertex shader
+  gl.compileShader(vertexShader)
+  if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+    console.log('vertex shader ereror');
+    var message = gl.getShaderInfoLog(vertexShader);
+    console.log(message);//print shader compiling error message
   }
-`;
+  //compile fragment shader
+  gl.compileShader(fragmentShader)
+  if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+    console.log('fragment shader ereror');
+    var message = gl.getShaderInfoLog(fragmentShader);
+    console.log(message);//print shader compiling error message
+  }
 
-function compileShader(gl, vShaderText, fShaderText){
-    //////Build vertex and fragment shader objects
-    var vertexShader = gl.createShader(gl.VERTEX_SHADER)
-    var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER)
-    //The way to  set up shader text source
-    gl.shaderSource(vertexShader, vShaderText)
-    gl.shaderSource(fragmentShader, fShaderText)
-    //compile vertex shader
-    gl.compileShader(vertexShader)
-    if(!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)){
-        console.log('vertex shader ereror');
-        var message = gl.getShaderInfoLog(vertexShader); 
-        console.log(message);//print shader compiling error message
-    }
-    //compile fragment shader
-    gl.compileShader(fragmentShader)
-    if(!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)){
-        console.log('fragment shader ereror');
-        var message = gl.getShaderInfoLog(fragmentShader);
-        console.log(message);//print shader compiling error message
-    }
+  /////link shader to program (by a self-define function)
+  var program = gl.createProgram();
+  gl.attachShader(program, vertexShader);
+  gl.attachShader(program, fragmentShader);
+  gl.linkProgram(program);
+  //if not success, log the program info, and delete it.
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    alert(gl.getProgramInfoLog(program) + "");
+    gl.deleteProgram(program);
+  }
 
-    /////link shader to program (by a self-define function)
-    var program = gl.createProgram();
-    gl.attachShader(program, vertexShader);
-    gl.attachShader(program, fragmentShader);
-    gl.linkProgram(program);
-    //if not success, log the program info, and delete it.
-    if(!gl.getProgramParameter(program, gl.LINK_STATUS)){
-        alert(gl.getProgramInfoLog(program) + "");
-        gl.deleteProgram(program);
-    }
-
-    return program;
+  return program;
 }
 
 /////BEGIN:///////////////////////////////////////////////////////////////////////////////////////////////
 /////The folloing three function is for creating vertex buffer, but link to shader to user later//////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
-function initAttributeVariable(gl, a_attribute, buffer){
+function initAttributeVariable(gl, a_attribute, buffer) {
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
   gl.vertexAttribPointer(a_attribute, buffer.num, buffer.type, false, 0, 0);
   gl.enableVertexAttribArray(a_attribute);
@@ -80,13 +61,13 @@ function initArrayBufferForLaterUse(gl, data, num, type) {
   return buffer;
 }
 
-function initVertexBufferForLaterUse(gl, vertices, normals, texCoords){
+function initVertexBufferForLaterUse(gl, vertices, normals, texCoords) {
   var nVertices = vertices.length / 3;
 
   var o = new Object();
   o.vertexBuffer = initArrayBufferForLaterUse(gl, new Float32Array(vertices), 3, gl.FLOAT);
-  if( normals != null ) o.normalBuffer = initArrayBufferForLaterUse(gl, new Float32Array(normals), 3, gl.FLOAT);
-  if( texCoords != null ) o.texCoordBuffer = initArrayBufferForLaterUse(gl, new Float32Array(texCoords), 2, gl.FLOAT);
+  if (normals != null) o.normalBuffer = initArrayBufferForLaterUse(gl, new Float32Array(normals), 3, gl.FLOAT);
+  if (texCoords != null) o.texCoordBuffer = initArrayBufferForLaterUse(gl, new Float32Array(texCoords), 2, gl.FLOAT);
   //you can have error check here
   o.numVertices = nVertices;
 
@@ -110,45 +91,43 @@ var cameraDirX = 0, cameraDirY = 0, cameraDirZ = 1;
 var cubeObj = [];
 var cubeMapTex;
 
-async function main(){
-    canvas = document.getElementById('webgl');
-    gl = canvas.getContext('webgl2');
-    if(!gl){
-        console.log('Failed to get the rendering context for WebGL');
-        return ;
-    }
+async function main() {
+  canvas = document.getElementById('webgl');
+  gl = canvas.getContext('webgl2');
+  if (!gl) {
+    console.log('Failed to get the rendering context for WebGL');
+    return;
+  }
 
-    response = await fetch('./object/cube.obj');
-    text = await response.text();
-    obj = parseOBJ(text);
-    for( let i=0; i < obj.geometries.length; i ++ ){
-      let o = initVertexBufferForLaterUse(gl, 
-                                          obj.geometries[i].data.position,
-                                          obj.geometries[i].data.normal, 
-                                          obj.geometries[i].data.texcoord);
-      cubeObj.push(o);
-    }
-  
-    program = compileShader(gl, VSHADER_SOURCE, FSHADER_SOURCE);
-    program.a_Position = gl.getAttribLocation(program, 'a_Position'); 
-    program.u_MvpMatrix = gl.getUniformLocation(program, 'u_MvpMatrix'); 
-    program.u_envCubeMap = gl.getUniformLocation(program, 'u_envCubeMap'); 
+  response = await fetch('./object/cube.obj');
+  text = await response.text();
+  obj = parseOBJ(text);
+  for (let i = 0; i < obj.geometries.length; i++) {
+    let o = initVertexBufferForLaterUse(gl,
+      obj.geometries[i].data.position,
+      obj.geometries[i].data.normal,
+      obj.geometries[i].data.texcoord);
+    cubeObj.push(o);
+  }
 
-    gl.useProgram(program);
+  program = compileShader(gl, VSHADER_SOURCE_ENVCUBE, FSHADER_SOURCE_ENVCUBE);
+  program.a_Position = gl.getAttribLocation(program, 'a_Position');
+  program.u_MvpMatrix = gl.getUniformLocation(program, 'u_MvpMatrix');
+  program.u_envCubeMap = gl.getUniformLocation(program, 'u_envCubeMap');
 
-    cubeMapTex = initCubeTexture("./cubemap/pos-x.png", "./cubemap/neg-x.png", "./cubemap/pos-y.png", "./cubemap/neg-y.png", 
-                                      "./cubemap/pos-z.png", "./cubemap/neg-z.png", 512, 512)
-    init_cubemap_program()
-    canvas.onmousedown = function(ev){mouseDown(ev)};
-    canvas.onmousemove = function(ev){mouseMove(ev)};
-    canvas.onmouseup = function(ev){mouseUp(ev)};
-    document.onkeydown = function(ev){keydown(ev)};
+  // gl.useProgram(program);
+  init_cubemap_program();
+  // init_normal_porgram();
+  canvas.onmousedown = function (ev) { mouseDown(ev) };
+  canvas.onmousemove = function (ev) { mouseMove(ev) };
+  canvas.onmouseup = function (ev) { mouseUp(ev) };
+  document.onkeydown = function (ev) { keydown(ev) };
 }
 
-function draw(){
+function draw() {
   gl.useProgram(program);
   gl.viewport(0, 0, canvas.width, canvas.height);
-  gl.clearColor(0.4,0.4,0.4,1);
+  gl.clearColor(0.4, 0.4, 0.4, 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);
 
@@ -161,13 +140,13 @@ function draw(){
   let rotateMatrix = new Matrix4();
   rotateMatrix.setRotate(angleY, 1, 0, 0);//for mouse rotation
   rotateMatrix.rotate(angleX, 0, 1, 0);//for mouse rotation
-  var viewDir= new Vector3([cameraDirX, cameraDirY, cameraDirZ]);
+  var viewDir = new Vector3([cameraDirX, cameraDirY, cameraDirZ]);
   var newViewDir = rotateMatrix.multiplyVector3(viewDir);
-  mvpFromCamera.lookAt(cameraX, cameraY, cameraZ,   
-                       cameraX + newViewDir.elements[0], 
-                       cameraY + newViewDir.elements[1],
-                       cameraZ + newViewDir.elements[2], 
-                       0, 1, 0);
+  mvpFromCamera.lookAt(cameraX, cameraY, cameraZ,
+    cameraX + newViewDir.elements[0],
+    cameraY + newViewDir.elements[1],
+    cameraZ + newViewDir.elements[2],
+    0, 1, 0);
   mvpFromCamera.multiply(modelMatrix);
 
   gl.uniformMatrix4fv(program.u_MvpMatrix, false, mvpFromCamera.elements);
@@ -179,10 +158,34 @@ function draw(){
   //cube
   gl.useProgram(program);
   gl.uniformMatrix4fv(program.u_MvpMatrix, false, mvpFromCamera.elements);
-  for( let i=0; i < cubeObj.length; i ++ ){
+  for (let i = 0; i < cubeObj.length; i++) {
     initAttributeVariable(gl, program.a_Position, cubeObj[i].vertexBuffer);
     gl.drawArrays(gl.TRIANGLES, 0, cubeObj[i].numVertices);
   }
+}
+
+function draw_cubemap(Tex, vMatrix, pMatrix) {
+  var vpFromCamera = new Matrix4();
+  vpFromCamera.set(pMatrix);
+  vMatrix.elements[12] = 0; //ignore translation
+  vMatrix.elements[13] = 0;
+  vMatrix.elements[14] = 0;
+  vpFromCamera.multiply(vMatrix);
+  var vpFromCameraInverse = vpFromCamera.invert();
+
+  //quad
+  gl.useProgram(programEnvCube);
+  gl.depthFunc(gl.LEQUAL);
+  gl.uniformMatrix4fv(
+    programEnvCube.u_viewDirectionProjectionInverse,
+    false,
+    vpFromCameraInverse.elements
+  );
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_CUBE_MAP, Tex);
+  gl.uniform1i(programEnvCube.u_envCubeMap, 0);
+  initAttributeVariable(gl, programEnvCube.a_Position, quadObj.vertexBuffer);
+  gl.drawArrays(gl.TRIANGLES, 0, quadObj.numVertices);
 }
 
 
@@ -213,7 +216,7 @@ function parseOBJ(text) {
   let material = 'default';
   let object = 'default';
 
-  const noop = () => {};
+  const noop = () => { };
 
   function newGeometry() {
     // If there is an existing geometry and it's
@@ -323,7 +326,7 @@ function parseOBJ(text) {
   // remove any arrays that have no entries.
   for (const geometry of geometries) {
     geometry.data = Object.fromEntries(
-        Object.entries(geometry.data).filter(([, array]) => array.length > 0));
+      Object.entries(geometry.data).filter(([, array]) => array.length > 0));
   }
 
   return {
@@ -333,41 +336,40 @@ function parseOBJ(text) {
 }
 
 
-function mouseDown(ev){ 
-    var x = ev.clientX;
-    var y = ev.clientY;
-    var rect = ev.target.getBoundingClientRect();
-    if( rect.left <= x && x < rect.right && rect.top <= y && y < rect.bottom){
-        mouseLastX = x;
-        mouseLastY = y;
-        mouseDragging = true;
-    }
-}
-
-function mouseUp(ev){ 
-    mouseDragging = false;
-}
-
-function mouseMove(ev){ 
-    var x = ev.clientX;
-    var y = ev.clientY;
-    if( mouseDragging ){
-        var factor = 100/canvas.height; //100 determine the spped you rotate the object
-        var dx = factor * (x - mouseLastX);
-        var dy = factor * (y - mouseLastY);
-
-        angleX += dx; //yes, x for y, y for x, this is right
-        angleY += dy;
-    }
+function mouseDown(ev) {
+  var x = ev.clientX;
+  var y = ev.clientY;
+  var rect = ev.target.getBoundingClientRect();
+  if (rect.left <= x && x < rect.right && rect.top <= y && y < rect.bottom) {
     mouseLastX = x;
     mouseLastY = y;
-
-    draw();
+    mouseDragging = true;
+  }
 }
 
-function initCubeTexture(posXName, negXName, posYName, negYName, 
-                         posZName, negZName, imgWidth, imgHeight)
-{
+function mouseUp(ev) {
+  mouseDragging = false;
+}
+
+function mouseMove(ev) {
+  var x = ev.clientX;
+  var y = ev.clientY;
+  if (mouseDragging) {
+    var factor = 100 / canvas.height; //100 determine the spped you rotate the object
+    var dx = factor * (x - mouseLastX);
+    var dy = factor * (y - mouseLastY);
+
+    angleX += dx; //yes, x for y, y for x, this is right
+    angleY += dy;
+  }
+  mouseLastX = x;
+  mouseLastY = y;
+
+  draw();
+}
+
+function initCubeTexture(posXName, negXName, posYName, negYName,
+  posZName, negZName, imgWidth, imgHeight) {
   var texture = gl.createTexture();
 
   const faceInfos = [
@@ -397,14 +399,14 @@ function initCubeTexture(posXName, negXName, posYName, negYName,
     },
   ];
   faceInfos.forEach((faceInfo) => {
-    const {target, fName} = faceInfo;
+    const { target, fName } = faceInfo;
     // setup each face so it's immediately renderable (avoid error message)
     gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
-    gl.texImage2D(target, 0, gl.RGBA, imgWidth, imgHeight, 0, 
-                  gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texImage2D(target, 0, gl.RGBA, imgWidth, imgHeight, 0,
+      gl.RGBA, gl.UNSIGNED_BYTE, null);
 
     var image = new Image();
-    image.onload = function(){
+    image.onload = function () {
       gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
       gl.texImage2D(target, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
       // gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
@@ -417,20 +419,20 @@ function initCubeTexture(posXName, negXName, posYName, negYName,
   return texture;
 }
 
-function keydown(ev){ 
+function keydown(ev) {
   //implment keydown event here
   let rotateMatrix = new Matrix4();
   rotateMatrix.setRotate(angleY, 1, 0, 0);//for mouse rotation
   rotateMatrix.rotate(angleX, 0, 1, 0);//for mouse rotation
-  var viewDir= new Vector3([cameraDirX, cameraDirY, cameraDirZ]);
+  var viewDir = new Vector3([cameraDirX, cameraDirY, cameraDirZ]);
   var newViewDir = rotateMatrix.multiplyVector3(viewDir);
 
-  if(ev.key == 'w'){ 
-      cameraX += (newViewDir.elements[0] * 0.1);
-      cameraY += (newViewDir.elements[1] * 0.1);
-      cameraZ += (newViewDir.elements[2] * 0.1);
+  if (ev.key == 'w') {
+    cameraX += (newViewDir.elements[0] * 0.1);
+    cameraY += (newViewDir.elements[1] * 0.1);
+    cameraZ += (newViewDir.elements[2] * 0.1);
   }
-  else if(ev.key == 's'){ 
+  else if (ev.key == 's') {
     cameraX -= (newViewDir.elements[0] * 0.1);
     cameraY -= (newViewDir.elements[1] * 0.1);
     cameraZ -= (newViewDir.elements[2] * 0.1);
