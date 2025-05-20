@@ -32,6 +32,7 @@ function init_cubemap_program() {
         512,
         512
     );
+    return cubeMapTex;
 }
 
 function init_normal_porgram() {
