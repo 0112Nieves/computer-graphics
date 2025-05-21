@@ -3,16 +3,21 @@ var mouseDragging = false;
 var angleX = 0, angleY = 0;
 var gl, canvas;
 var mvpMatrix;
-var modelMatrix;
-var normalMatrix;
-var nVertex;
+var modelMatrix = new Matrix4();
+var normalMatrix = new Matrix4();
+var nVertex = new Matrix4();
 var cameraX = 0, cameraY = 0, cameraZ = 5;
 var cameraDirX = 0, cameraDirY = 0, cameraDirZ = -1;
 var cubeMapTex;
 var objComponents = [];
 var quadObj;
 var boardPosition = 0.5;
-let boardDirection = 1; 
+let boardDirection = 1;
+
+let cubeObj = [];
+let bottleObj = [];
+var boardMatrix = new Matrix4();
+var bottleMatrix = new Matrix4();
 
 async function main() {
   canvas = document.getElementById('webgl');
@@ -55,7 +60,19 @@ async function main() {
       obj.geometries[i].data.position,
       obj.geometries[i].data.normal,
       obj.geometries[i].data.texcoord);
-    objComponents.push(o);
+    cubeObj.push(o);
+  }
+
+  response = await fetch('./object/sercups_vodka_glass.obj');
+  text = await response.text();
+  obj = parseOBJ(text);
+
+  for (let i = 0; i < obj.geometries.length; i++) {
+    let o = initVertexBufferForLaterUse(gl,
+      obj.geometries[i].data.position,
+      obj.geometries[i].data.normal,
+      obj.geometries[i].data.texcoord);
+    bottleObj.push(o);
   }
 
   cubeMapTex = initCubeTexture("./cubemap/pos-x.png", "./cubemap/neg-x.png", "./cubemap/pos-y.png", "./cubemap/neg-y.png",
@@ -75,11 +92,11 @@ async function main() {
   var tick = function () {
     boardPosition += 0.013 * boardDirection;
 
-    if (boardPosition >= 1.5) {
-      boardPosition = 1.5;
+    if (boardPosition >= 1.3) {
+      boardPosition = 1.3;
       boardDirection = -1;
-    } else if (boardPosition <= -1.5) {
-      boardPosition = -1.5;
+    } else if (boardPosition <= -1.3) {
+      boardPosition = -1.3;
       boardDirection = 1;
     }
     draw();
@@ -94,31 +111,32 @@ function draw() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);
 
-  //rotate the camera view direction
+  // rotate the camera view direction
   let rotateMatrix = new Matrix4();
-  rotateMatrix.setRotate(angleY, 1, 0, 0);//for mouse rotation
-  rotateMatrix.rotate(angleX, 0, 1, 0);//for mouse rotation
-  var viewDir = new Vector3([cameraDirX, cameraDirY, cameraDirZ]);
-  var newViewDir = rotateMatrix.multiplyVector3(viewDir);
+  rotateMatrix.setRotate(angleY, 1, 0, 0);
+  rotateMatrix.rotate(angleX, 0, 1, 0);
+  let viewDir = new Vector3([cameraDirX, cameraDirY, cameraDirZ]);
+  let newViewDir = rotateMatrix.multiplyVector3(viewDir);
 
-  var viewMatrix = new Matrix4();
-  var projMatrix = new Matrix4();
-  projMatrix.setPerspective(60, 1, 1, 15);
+  let viewMatrix = new Matrix4();
+  let projMatrix = new Matrix4();
+  projMatrix.setPerspective(60, canvas.width / canvas.height, 1, 100);
   viewMatrix.setLookAt(cameraX, cameraY, cameraZ,
     cameraX + newViewDir.elements[0],
     cameraY + newViewDir.elements[1],
     cameraZ + newViewDir.elements[2],
     0, 1, 0);
-  var viewMatrixRotationOnly = new Matrix4();
+
+  let viewMatrixRotationOnly = new Matrix4();
   viewMatrixRotationOnly.set(viewMatrix);
-  viewMatrixRotationOnly.elements[12] = 0; //ignore translation
+  viewMatrixRotationOnly.elements[12] = 0;
   viewMatrixRotationOnly.elements[13] = 0;
   viewMatrixRotationOnly.elements[14] = 0;
-  var vpFromCameraRotationOnly = new Matrix4();
+  let vpFromCameraRotationOnly = new Matrix4();
   vpFromCameraRotationOnly.set(projMatrix).multiply(viewMatrixRotationOnly);
-  var vpFromCameraInverse = vpFromCameraRotationOnly.invert();
+  let vpFromCameraInverse = vpFromCameraRotationOnly.invert();
 
-  //draw the background quad
+  // === Skybox ===
   gl.useProgram(programEnvCube);
   gl.depthFunc(gl.LEQUAL);
   gl.uniformMatrix4fv(programEnvCube.u_viewDirectionProjectionInverse,
@@ -129,88 +147,53 @@ function draw() {
   initAttributeVariable(gl, programEnvCube.a_Position, quadObj.vertexBuffer);
   gl.drawArrays(gl.TRIANGLES, 0, quadObj.numVertices);
 
-
-  //Draw the reflective cube
+  // === Main object rendering ===
   gl.useProgram(program);
   gl.depthFunc(gl.LESS);
-  //model Matrix (part of the mvp matrix)
-  var modelMatrix = new Matrix4();
-  modelMatrix.setScale(0.6, 0.2, 0.1);
-  modelMatrix.translate(boardPosition, 12, 0);
-  //mvp: projection * view * model matrix  
-  var mvpMatrix = new Matrix4();
-  mvpMatrix.set(projMatrix).multiply(viewMatrix).multiply(modelMatrix);
-
-  //normal matrix
-  var normalMatrix = new Matrix4();
-  normalMatrix.setInverseOf(modelMatrix);
-  normalMatrix.transpose();
-
   gl.uniform3f(program.u_ViewPosition, cameraX, cameraY, cameraZ);
   gl.uniform1i(program.u_envCubeMap, 0);
-
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubeMapTex);
+
+  // mobile board
+  boardMatrix.setIdentity();
+  boardMatrix.translate(boardPosition, 2.0, 0.0);
+  boardMatrix.scale(0.6, 0.2, 0.1);
+  drawOneObject(cubeObj, boardMatrix, viewMatrix, projMatrix, 0.8, 0.9, 1.0);
+
+  // vodka bottle
+  bottleMatrix.setIdentity();
+  bottleMatrix.translate(0.0, -1.0, -2.0);
+  bottleMatrix.scale(2.5, 2.5, 0.1);
+  drawOneObject(bottleObj, bottleMatrix, viewMatrix, projMatrix, 0.6, 0.6, 0.9);
+}
+
+function drawOneObject(obj, mdlMatrix, viewMatrix, projMatrix, colorR, colorG, colorB) {
+  modelMatrix.setRotate(angleY, 1, 0, 0);
+  modelMatrix.rotate(angleX, 0, 1, 0);
+  modelMatrix.multiply(mdlMatrix);
+
+  let mvpMatrix = new Matrix4();
+  mvpMatrix.set(projMatrix).multiply(viewMatrix).multiply(modelMatrix);
+
+  let normalMatrix = new Matrix4();
+  normalMatrix.setInverseOf(modelMatrix);
+  normalMatrix.transpose();
 
   gl.uniformMatrix4fv(program.u_MvpMatrix, false, mvpMatrix.elements);
   gl.uniformMatrix4fv(program.u_modelMatrix, false, modelMatrix.elements);
   gl.uniformMatrix4fv(program.u_normalMatrix, false, normalMatrix.elements);
 
-  for (let i = 0; i < objComponents.length; i++) {
-    initAttributeVariable(gl, program.a_Position, objComponents[i].vertexBuffer);
-    initAttributeVariable(gl, program.a_Normal, objComponents[i].normalBuffer);
-    gl.drawArrays(gl.TRIANGLES, 0, objComponents[i].numVertices);
+  gl.uniform3f(program.u_LightPosition, 0, 5, 3);
+  gl.uniform3f(program.u_Color, colorR, colorG, colorB);
+  gl.uniform1f(program.u_Ka, 0.2);
+  gl.uniform1f(program.u_Kd, 0.7);
+  gl.uniform1f(program.u_Ks, 1.0);
+  gl.uniform1f(program.u_shininess, 10.0);
+
+  for (let i = 0; i < obj.length; i++) {
+    initAttributeVariable(gl, program.a_Position, obj[i].vertexBuffer);
+    initAttributeVariable(gl, program.a_Normal, obj[i].normalBuffer);
+    gl.drawArrays(gl.TRIANGLES, 0, obj[i].numVertices);
   }
-}
-
-function mouseDown(ev) {
-  var x = ev.clientX;
-  var y = ev.clientY;
-  var rect = ev.target.getBoundingClientRect();
-  if (rect.left <= x && x < rect.right && rect.top <= y && y < rect.bottom) {
-    mouseLastX = x;
-    mouseLastY = y;
-    mouseDragging = true;
-  }
-}
-
-function mouseUp(ev) {
-  mouseDragging = false;
-}
-
-function mouseMove(ev) {
-  var x = ev.clientX;
-  var y = ev.clientY;
-  if (mouseDragging) {
-    var factor = 100 / canvas.height; //100 determine the spped you rotate the object
-    var dx = factor * (x - mouseLastX);
-    var dy = factor * (y - mouseLastY);
-
-    angleX += dx; //yes, x for y, y for x, this is right
-    angleY += dy;
-  }
-  mouseLastX = x;
-  mouseLastY = y;
-  draw();
-}
-
-function keydown(ev) {
-  //implment keydown event here
-  let rotateMatrix = new Matrix4();
-  rotateMatrix.setRotate(angleY, 1, 0, 0);//for mouse rotation
-  rotateMatrix.rotate(angleX, 0, 1, 0);//for mouse rotation
-  var viewDir = new Vector3([cameraDirX, cameraDirY, cameraDirZ]);
-  var newViewDir = rotateMatrix.multiplyVector3(viewDir);
-
-  if (ev.key == 'w') {
-    cameraX += (newViewDir.elements[0] * 0.1);
-    cameraY += (newViewDir.elements[1] * 0.1);
-    cameraZ += (newViewDir.elements[2] * 0.1);
-  }
-  else if (ev.key == 's') {
-    cameraX -= (newViewDir.elements[0] * 0.1);
-    cameraY -= (newViewDir.elements[1] * 0.1);
-    cameraZ -= (newViewDir.elements[2] * 0.1);
-  }
-  draw();
 }
