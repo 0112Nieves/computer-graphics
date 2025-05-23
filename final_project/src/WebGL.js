@@ -13,11 +13,18 @@ var objComponents = [];
 var quadObj;
 var boardPosition = 0.5;
 let boardDirection = 1;
+var lightX = 5.0, lightY = 5.0, lightZ = 5.0;
 
 let cubeObj = [];
 let bottleObj = [];
+let catObj = [];
 var boardMatrix = new Matrix4();
 var bottleMatrix = new Matrix4();
+var catMatrix = new Matrix4();
+
+var textures = {};
+var imgNames = ["./texture/cat.jpg"];
+var objCompImgIndex = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
 async function main() {
   canvas = document.getElementById('webgl');
@@ -50,6 +57,25 @@ async function main() {
   program.u_normalMatrix = gl.getUniformLocation(program, 'u_normalMatrix');
   program.u_ViewPosition = gl.getUniformLocation(program, 'u_ViewPosition');
   program.u_envCubeMap = gl.getUniformLocation(program, 'u_envCubeMap');
+  program.u_LightPosition = gl.getUniformLocation(program, 'u_LightPosition');
+  program.u_Ka = gl.getUniformLocation(program, 'u_Ka');
+  program.u_Kd = gl.getUniformLocation(program, 'u_Kd');
+  program.u_Ks = gl.getUniformLocation(program, 'u_Ks');
+  program.u_Shininess = gl.getUniformLocation(program, 'u_Shininess');
+
+  programTexture = compileShader(gl, VSHADER_SOURCE_TEXTURE, FSHADER_SOURCE_TEXTURE);
+  programTexture.a_Position = gl.getAttribLocation(programTexture, 'a_Position');
+  programTexture.a_Normal = gl.getAttribLocation(programTexture, 'a_Normal');
+  programTexture.a_TexCoord = gl.getAttribLocation(programTexture, 'a_TexCoord');
+  programTexture.u_MvpMatrix = gl.getUniformLocation(programTexture, 'u_MvpMatrix');
+  programTexture.u_modelMatrix = gl.getUniformLocation(programTexture, 'u_modelMatrix');
+  programTexture.u_normalMatrix = gl.getUniformLocation(programTexture, 'u_normalMatrix');
+  programTexture.u_LightPosition = gl.getUniformLocation(programTexture, 'u_LightPosition');
+  programTexture.u_Ka = gl.getUniformLocation(programTexture, 'u_Ka');
+  programTexture.u_Kd = gl.getUniformLocation(programTexture, 'u_Kd');
+  programTexture.u_Ks = gl.getUniformLocation(programTexture, 'u_Ks');
+  programTexture.u_Shininess = gl.getUniformLocation(programTexture, 'u_Shininess');
+  programTexture.u_Sampler = gl.getUniformLocation(programTexture, 'u_Sampler');
 
   response = await fetch('./object/cube.obj');
   text = await response.text();
@@ -75,6 +101,24 @@ async function main() {
     bottleObj.push(o);
   }
 
+  response = await fetch('./object/cat.obj');
+  text = await response.text();
+  obj = parseOBJ(text);
+
+  for (let i = 0; i < obj.geometries.length; i++) {
+    let o = initVertexBufferForLaterUse(gl,
+      obj.geometries[i].data.position,
+      obj.geometries[i].data.normal,
+      obj.geometries[i].data.texcoord);
+    catObj.push(o);
+  }
+
+  for( let i=0; i < imgNames.length; i ++ ){
+    let image = new Image();
+    image.onload = function(){initTexture(gl, image, imgNames[i], imgNames.length);};
+    image.src = imgNames[i];
+  }
+
   cubeMapTex = initCubeTexture("./cubemap/pos-x.png", "./cubemap/neg-x.png", "./cubemap/pos-y.png", "./cubemap/neg-y.png",
     "./cubemap/pos-z.png", "./cubemap/neg-z.png", 512, 512)
 
@@ -82,7 +126,8 @@ async function main() {
 
   gl.enable(gl.DEPTH_TEST);
 
-  draw();//draw it once before mouse move
+  await load_all_texture();
+  draw();
 
   canvas.onmousedown = function (ev) { mouseDown(ev) };
   canvas.onmousemove = function (ev) { mouseMove(ev) };
@@ -166,6 +211,15 @@ function draw() {
   bottleMatrix.translate(0.0, -1.0, -2.0);
   bottleMatrix.scale(2.5, 2.5, 0.1);
   drawOneObject(bottleObj, bottleMatrix, viewMatrix, projMatrix, 0.6, 0.6, 0.9);
+
+  // cat
+  gl.useProgram(programTexture);
+  gl.depthFunc(gl.LESS);
+  catMatrix.setIdentity();
+  catMatrix.translate(2.5, -2.0, -2.0);
+  catMatrix.rotate(-90, 1, 0, 0);  // 先繞 X 軸旋轉
+  catMatrix.scale(5.0, 5.0, 5.0);
+  drawOneObjectWithTex(catObj, catMatrix, viewMatrix, projMatrix, programTexture);
 }
 
 function drawOneObject(obj, mdlMatrix, viewMatrix, projMatrix, colorR, colorG, colorB) {
@@ -184,16 +238,77 @@ function drawOneObject(obj, mdlMatrix, viewMatrix, projMatrix, colorR, colorG, c
   gl.uniformMatrix4fv(program.u_modelMatrix, false, modelMatrix.elements);
   gl.uniformMatrix4fv(program.u_normalMatrix, false, normalMatrix.elements);
 
-  gl.uniform3f(program.u_LightPosition, 0, 5, 3);
-  gl.uniform3f(program.u_Color, colorR, colorG, colorB);
+  gl.uniform3f(program.u_ViewPosition, cameraX, cameraY, cameraZ);
+  gl.uniform3f(program.u_LightPosition, lightX, lightY, lightZ);
   gl.uniform1f(program.u_Ka, 0.2);
   gl.uniform1f(program.u_Kd, 0.7);
-  gl.uniform1f(program.u_Ks, 1.0);
-  gl.uniform1f(program.u_shininess, 10.0);
+  gl.uniform1f(program.u_Ks, 0.5);
+  gl.uniform1f(program.u_Shininess, 32.0);
 
   for (let i = 0; i < obj.length; i++) {
     initAttributeVariable(gl, program.a_Position, obj[i].vertexBuffer);
     initAttributeVariable(gl, program.a_Normal, obj[i].normalBuffer);
     gl.drawArrays(gl.TRIANGLES, 0, obj[i].numVertices);
   }
+}
+
+async function load_all_texture() {
+    return new Promise((resolve) => {
+        var cat = new Image();
+        cat.onload = function () {
+            initTexture(gl, cat, "catTex");
+            resolve();
+        };
+        cat.src = "./texture/cat.jpg";
+    });
+}
+
+function initTexture(gl, img, texKey) {
+    var tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+
+    textures[texKey] = tex;
+}
+
+function drawOneObjectWithTex(obj, mdlMatrix, viewMatrix, projMatrix, program) {
+    modelMatrix.setRotate(angleY, 1, 0, 0);
+    modelMatrix.rotate(angleX, 0, 1, 0);
+    modelMatrix.multiply(mdlMatrix);
+
+    let mvpMatrix = new Matrix4();
+    mvpMatrix.set(projMatrix).multiply(viewMatrix).multiply(modelMatrix);
+
+    let normalMatrix = new Matrix4();
+    normalMatrix.setInverseOf(modelMatrix);
+    normalMatrix.transpose();
+
+    gl.uniformMatrix4fv(program.u_MvpMatrix, false, mvpMatrix.elements);
+    gl.uniformMatrix4fv(program.u_modelMatrix, false, modelMatrix.elements);
+    gl.uniformMatrix4fv(program.u_normalMatrix, false, normalMatrix.elements);
+
+    gl.uniform3f(program.u_LightPosition, lightX, lightY, lightZ);
+    gl.uniform1f(program.u_Ka, 0.2);
+    gl.uniform1f(program.u_Kd, 0.7);
+    gl.uniform1f(program.u_Ks, 0.5);
+    gl.uniform1f(program.u_Shininess, 32.0);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, textures["catTex"]);
+    gl.uniform1i(program.u_Sampler, 0);
+
+    for (let i = 0; i < obj.length; i++) {
+        initAttributeVariable(gl, program.a_Position, obj[i].vertexBuffer);
+        initAttributeVariable(gl, program.a_Normal, obj[i].normalBuffer);
+        if (obj[i].texCoordBuffer) {
+            initAttributeVariable(gl, program.a_TexCoord, obj[i].texCoordBuffer);
+        }
+        gl.drawArrays(gl.TRIANGLES, 0, obj[i].numVertices);
+    }
 }

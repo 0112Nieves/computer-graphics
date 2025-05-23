@@ -237,55 +237,93 @@ function parseOBJ(text) {
   };
 }
 
-function initCubeTexture(posXName, negXName, posYName, negYName,
-  posZName, negZName, imgWidth, imgHeight) {
-  var texture = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+var texCount = 0;
+function initTexture(gl, img, imgName, numTextures) {
+  var tex = gl.createTexture();
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
+  gl.bindTexture(gl.TEXTURE_2D, tex);
 
-  const faceInfos = [
-    {
-      target: gl.TEXTURE_CUBE_MAP_POSITIVE_X,
-      fName: posXName,
-    },
-    {
-      target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X,
-      fName: negXName,
-    },
-    {
-      target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
-      fName: posYName,
-    },
-    {
-      target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,
-      fName: negYName,
-    },
-    {
-      target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
-      fName: posZName,
-    },
-    {
-      target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z,
-      fName: negZName,
-    },
-  ];
-  faceInfos.forEach((faceInfo) => {
-    const { target, fName } = faceInfo;
-    // setup each face so it's immediately renderable
-    gl.texImage2D(target, 0, gl.RGBA, imgWidth, imgHeight, 0,
-      gl.RGBA, gl.UNSIGNED_BYTE, null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
 
-    var image = new Image();
-    image.onload = function () {
-      gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
-      gl.texImage2D(target, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-      gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
-    };
-    image.src = fName;
-  });
-  gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
-  gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  textures[imgName] = tex;
 
-  return texture;
+  texCount++;
+  if (texCount === numTextures) draw();
+}
+
+function initCubeTexture(
+    posXName,
+    negXName,
+    posYName,
+    negYName,
+    posZName,
+    negZName,
+    imgWidth,
+    imgHeight
+) {
+    var texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+
+    const faceInfos = [
+        {
+            target: gl.TEXTURE_CUBE_MAP_POSITIVE_X,
+            fName: posXName,
+        },
+        {
+            target: gl.TEXTURE_CUBE_MAP_NEGATIVE_X,
+            fName: negXName,
+        },
+        {
+            target: gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
+            fName: posYName,
+        },
+        {
+            target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,
+            fName: negYName,
+        },
+        {
+            target: gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
+            fName: posZName,
+        },
+        {
+            target: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z,
+            fName: negZName,
+        },
+    ];
+    faceInfos.forEach((faceInfo) => {
+        const { target, fName } = faceInfo;
+        // setup each face so it's immediately renderable
+        gl.texImage2D(
+            target,
+            0,
+            gl.RGBA,
+            imgWidth,
+            imgHeight,
+            0,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            null
+        );
+
+        var image = new Image();
+        image.onload = function () {
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
+            gl.texImage2D(target, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+            gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+        };
+        image.src = fName;
+    });
+    gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+    gl.texParameteri(
+        gl.TEXTURE_CUBE_MAP,
+        gl.TEXTURE_MIN_FILTER,
+        gl.LINEAR_MIPMAP_LINEAR
+    );
+
+    return texture;
 }
 
 function mouseDown(ev) {
