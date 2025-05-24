@@ -6,8 +6,6 @@ var mvpMatrix;
 var modelMatrix = new Matrix4();
 var normalMatrix = new Matrix4();
 var nVertex = new Matrix4();
-var cameraX = 0, cameraY = 0, cameraZ = 5;
-var cameraDirX = 0, cameraDirY = 0, cameraDirZ = -1;
 var cubeMapTex;
 var objComponents = [];
 var quadObj;
@@ -21,10 +19,8 @@ let catObj = [];
 var boardMatrix = new Matrix4();
 var bottleMatrix = new Matrix4();
 var catMatrix = new Matrix4();
-
+var MainControlMatrix = new Matrix4();
 var textures = {};
-var imgNames = ["./texture/cat.jpg"];
-var objCompImgIndex = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
 async function main() {
   canvas = document.getElementById('webgl');
@@ -113,12 +109,6 @@ async function main() {
     catObj.push(o);
   }
 
-  for( let i=0; i < imgNames.length; i ++ ){
-    let image = new Image();
-    image.onload = function(){initTexture(gl, image, imgNames[i], imgNames.length);};
-    image.src = imgNames[i];
-  }
-
   cubeMapTex = initCubeTexture("./cubemap/pos-x.png", "./cubemap/neg-x.png", "./cubemap/pos-y.png", "./cubemap/neg-y.png",
     "./cubemap/pos-z.png", "./cubemap/neg-z.png", 512, 512)
 
@@ -132,7 +122,10 @@ async function main() {
   canvas.onmousedown = function (ev) { mouseDown(ev) };
   canvas.onmousemove = function (ev) { mouseMove(ev) };
   canvas.onmouseup = function (ev) { mouseUp(ev) };
-  document.onkeydown = function (ev) { keydown(ev) };
+  document.onkeydown = function (ev) {
+      keydown(ev); 
+      interface(ev);
+  };
 
   var tick = function () {
     boardPosition += 0.013 * boardDirection;
@@ -202,30 +195,40 @@ function draw() {
 
   // mobile board
   boardMatrix.setIdentity();
-  boardMatrix.translate(boardPosition, 2.0, 0.0);
-  boardMatrix.scale(0.6, 0.2, 0.1);
-  drawOneObject(cubeObj, boardMatrix, viewMatrix, projMatrix, 0.8, 0.9, 1.0);
+  boardMatrix.translate(boardPosition, 2.0, -2.5);
+  boardMatrix.scale(0.6, 0.25, 0.25);
+  drawOneObject(cubeObj, boardMatrix, viewMatrix, projMatrix);
 
   // vodka bottle
   bottleMatrix.setIdentity();
   bottleMatrix.translate(0.0, -1.0, -2.0);
-  bottleMatrix.scale(2.5, 2.5, 0.1);
-  drawOneObject(bottleObj, bottleMatrix, viewMatrix, projMatrix, 0.6, 0.6, 0.9);
+  bottleMatrix.scale(2.5, 2.5, 1.0);
+  drawOneObject(bottleObj, bottleMatrix, viewMatrix, projMatrix);
 
   // cat
   gl.useProgram(programTexture);
   gl.depthFunc(gl.LESS);
   catMatrix.setIdentity();
   catMatrix.translate(2.5, -2.0, -2.0);
-  catMatrix.rotate(-90, 1, 0, 0);  // 先繞 X 軸旋轉
+  catMatrix.rotate(-90, 1, 0, 0);
   catMatrix.scale(5.0, 5.0, 5.0);
   drawOneObjectWithTex(catObj, catMatrix, viewMatrix, projMatrix, programTexture);
+
+  // main control
+  if (third_view) {
+    MainControlMatrix.setIdentity();
+    MainControlMatrix.translate(firstcameraX, firstcameraY, firstcameraZ);
+    MainControlMatrix.scale(0.1, 0.1, 0.1);
+    drawOneObject(cubeObj, MainControlMatrix, viewMatrix, projMatrix);
+  }
 }
 
-function drawOneObject(obj, mdlMatrix, viewMatrix, projMatrix, colorR, colorG, colorB) {
-  modelMatrix.setRotate(angleY, 1, 0, 0);
-  modelMatrix.rotate(angleX, 0, 1, 0);
-  modelMatrix.multiply(mdlMatrix);
+function drawOneObject(obj, mdlMatrix, viewMatrix, projMatrix) {
+  gl.useProgram(program);
+  gl.depthFunc(gl.LESS);
+  
+  let modelMatrix = new Matrix4();
+  modelMatrix.set(mdlMatrix);
 
   let mvpMatrix = new Matrix4();
   mvpMatrix.set(projMatrix).multiply(viewMatrix).multiply(modelMatrix);
@@ -237,13 +240,16 @@ function drawOneObject(obj, mdlMatrix, viewMatrix, projMatrix, colorR, colorG, c
   gl.uniformMatrix4fv(program.u_MvpMatrix, false, mvpMatrix.elements);
   gl.uniformMatrix4fv(program.u_modelMatrix, false, modelMatrix.elements);
   gl.uniformMatrix4fv(program.u_normalMatrix, false, normalMatrix.elements);
-
   gl.uniform3f(program.u_ViewPosition, cameraX, cameraY, cameraZ);
   gl.uniform3f(program.u_LightPosition, lightX, lightY, lightZ);
   gl.uniform1f(program.u_Ka, 0.2);
   gl.uniform1f(program.u_Kd, 0.7);
   gl.uniform1f(program.u_Ks, 0.5);
   gl.uniform1f(program.u_Shininess, 32.0);
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubeMapTex);
+  gl.uniform1i(program.u_envCubeMap, 0);
 
   for (let i = 0; i < obj.length; i++) {
     initAttributeVariable(gl, program.a_Position, obj[i].vertexBuffer);
@@ -278,9 +284,7 @@ function initTexture(gl, img, texKey) {
 }
 
 function drawOneObjectWithTex(obj, mdlMatrix, viewMatrix, projMatrix, program) {
-    modelMatrix.setRotate(angleY, 1, 0, 0);
-    modelMatrix.rotate(angleX, 0, 1, 0);
-    modelMatrix.multiply(mdlMatrix);
+    modelMatrix.set(mdlMatrix);
 
     let mvpMatrix = new Matrix4();
     mvpMatrix.set(projMatrix).multiply(viewMatrix).multiply(modelMatrix);
@@ -294,6 +298,7 @@ function drawOneObjectWithTex(obj, mdlMatrix, viewMatrix, projMatrix, program) {
     gl.uniformMatrix4fv(program.u_normalMatrix, false, normalMatrix.elements);
 
     gl.uniform3f(program.u_LightPosition, lightX, lightY, lightZ);
+    gl.uniform3f(program.u_ViewPosition, cameraX, cameraY, cameraZ);
     gl.uniform1f(program.u_Ka, 0.2);
     gl.uniform1f(program.u_Kd, 0.7);
     gl.uniform1f(program.u_Ks, 0.5);

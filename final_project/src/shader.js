@@ -76,8 +76,6 @@ var FSHADER_SOURCE = `
     }
 `;
 
-
-
 // texture
 var VSHADER_SOURCE_TEXTURE = `
     attribute vec4 a_Position;
@@ -100,6 +98,7 @@ var VSHADER_SOURCE_TEXTURE = `
 var FSHADER_SOURCE_TEXTURE = `
     precision mediump float;
     uniform vec3 u_LightPosition;
+    uniform vec3 u_ViewPosition;
     uniform float u_Ka;
     uniform float u_Kd;
     uniform float u_Ks;
@@ -112,22 +111,17 @@ var FSHADER_SOURCE_TEXTURE = `
     void main() {
         vec3 texColor = texture2D(u_Sampler, v_TexCoord).rgb;
 
-        // Ambient Light
         vec3 ambient = texColor * u_Ka;
-
-        // Diffuse Light
         vec3 normal = normalize(v_Normal);
         vec3 lightDirection = normalize(u_LightPosition - v_PositionInWorld);
         float nDotL = max(dot(normal, lightDirection), 0.0);
         vec3 diffuse = texColor * u_Kd * nDotL;
 
-        // Specular Light (Phong)
-        vec3 viewDirection = normalize(-v_PositionInWorld); // 假設相機在原點
+        vec3 viewDirection = normalize(u_ViewPosition - v_PositionInWorld); // 改這裡
         vec3 reflectDirection = reflect(-lightDirection, normal);
         float specular = pow(max(dot(viewDirection, reflectDirection), 0.0), u_Shininess);
-        vec3 specularColor = vec3(1.0, 1.0, 1.0) * u_Ks * specular; // 白色高光
+        vec3 specularColor = vec3(1.0) * u_Ks * specular;
 
-        // Final color = ambient + diffuse + specular
         vec3 finalColor = ambient + diffuse + specularColor;
 
         gl_FragColor = vec4(finalColor, 1.0);
