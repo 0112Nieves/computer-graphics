@@ -70,28 +70,37 @@ function keydown(ev) {
 
     vdx *= player_step;
     vdz *= player_step;
-    playerX += vdx;
-    playerZ += vdz;
-    firstcameraX += vdx;
-    firstcameraZ += vdz;
-    thirdcameraX += vdx;
-    thirdcameraZ += vdz;
-    if (playerX < -10 || 10 < playerX || playerZ < -15 || 15 < playerZ) {
-        playerX -= vdx;
-        playerZ -= vdz;
-        firstcameraX -= vdx;
-        firstcameraZ -= vdz;
-        thirdcameraX -= vdx;
-        thirdcameraZ -= vdz;
-    }
+
     if (third_view) {
+        thirdcameraX += vdx;
+        thirdcameraZ += vdz;
         cameraX = thirdcameraX;
         cameraY = thirdcameraY;
         cameraZ = thirdcameraZ;
+        firstcameraX += vdx;
+        firstcameraZ += vdz;
     } else {
+        firstcameraX += vdx;
+        firstcameraZ += vdz;
         cameraX = firstcameraX;
         cameraY = firstcameraY;
         cameraZ = firstcameraZ;
+    }
+
+    if (cameraX < -10 || 10 < cameraX || cameraZ < -15 || 15 < cameraZ) {
+        if (third_view) {
+            thirdcameraX -= vdx;
+            thirdcameraZ -= vdz;
+            cameraX = thirdcameraX;
+            cameraZ = thirdcameraZ;
+            firstcameraX -= vdx; 
+            firstcameraZ -= vdz;
+        } else {
+            firstcameraX -= vdx;
+            firstcameraZ -= vdz;
+            cameraX = firstcameraX;
+            cameraZ = firstcameraZ;
+        }
     }
 }
 

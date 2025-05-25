@@ -167,9 +167,6 @@ function draw() {
 
   let viewMatrixRotationOnly = new Matrix4();
   viewMatrixRotationOnly.set(viewMatrix);
-  viewMatrixRotationOnly.elements[12] = 0;
-  viewMatrixRotationOnly.elements[13] = 0;
-  viewMatrixRotationOnly.elements[14] = 0;
   let vpFromCameraRotationOnly = new Matrix4();
   vpFromCameraRotationOnly.set(projMatrix).multiply(viewMatrixRotationOnly);
   let vpFromCameraInverse = vpFromCameraRotationOnly.invert();
