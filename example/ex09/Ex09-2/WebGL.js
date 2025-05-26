@@ -173,6 +173,7 @@ var cameraX = 3, cameraY = 3, cameraZ = 7;
 var lightX = 0, lightY = 4, lightZ = 5.1;
 var marioObj = [];
 var cubeObj = [];
+var bottleObj = [];
 var offScreenWidth = 2048, offScreenHeight = 2048;
 var fbo;
 
@@ -207,7 +208,7 @@ async function main(){
 
     gl.useProgram(program);
 
-    response = await fetch('mario.obj');
+    response = await fetch('sercups_vodka_glass.obj');
     text = await response.text();
     obj = parseOBJ(text);
     for( let i=0; i < obj.geometries.length; i ++ ){
@@ -215,7 +216,7 @@ async function main(){
                                           obj.geometries[i].data.position,
                                           obj.geometries[i].data.normal, 
                                           obj.geometries[i].data.texcoord);
-      marioObj.push(o);
+      bottleObj.push(o);
     }
 
     response = await fetch('cube.obj');
@@ -253,8 +254,8 @@ function draw(){
   //mario
   let marioMdlMatrix = new Matrix4();
   marioMdlMatrix.setTranslate(0.0, 1.4, 0.0);
-  marioMdlMatrix.scale(0.02,0.02,0.02);
-  let marioMvpFromLight = drawOffScreen(marioObj, marioMdlMatrix);
+  // marioMdlMatrix.scale(0.02,0.02,0.02);
+  let marioMvpFromLight = drawOffScreen(bottleObj, marioMdlMatrix);
 
   ///// on scree rendering
   gl.useProgram(program);
@@ -266,7 +267,7 @@ function draw(){
   //cube
   drawOneObjectOnScreen(cubeObj, cubeMdlMatrix, cubeMvpFromLight, 1.0, 0.4, 0.4);
   //mario
-  drawOneObjectOnScreen(marioObj, marioMdlMatrix, marioMvpFromLight, 0.4, 1.0, 0.4);
+  drawOneObjectOnScreen(bottleObj, marioMdlMatrix, marioMvpFromLight, 0.4, 1.0, 0.4);
 }
 
 function drawOffScreen(obj, mdlMatrix){

@@ -12,13 +12,9 @@ var quadObj;
 var boardPosition = 0.5;
 let boardDirection = 1;
 var lightX = 5.0, lightY = 5.0, lightZ = 5.0;
+var fbo;
+var offScreenWidth = 512, offScreenHeight = 512;
 
-let cubeObj = [];
-let bottleObj = [];
-let catObj = [];
-var boardMatrix = new Matrix4();
-var bottleMatrix = new Matrix4();
-var catMatrix = new Matrix4();
 var MainControlMatrix = new Matrix4();
 var textures = {};
 
@@ -30,93 +26,16 @@ async function main() {
     return;
   }
 
-  var quad = new Float32Array(
-    [
-      -1, -1, 1,
-      1, -1, 1,
-      -1, 1, 1,
-      -1, 1, 1,
-      1, -1, 1,
-      1, 1, 1
-    ]); //just a quad
+  init_cubemap_program();
+  init_texture_program();
+  init_normal_program();
+  init_shadow_program();
 
-  programEnvCube = compileShader(gl, VSHADER_SOURCE_ENVCUBE, FSHADER_SOURCE_ENVCUBE);
-  programEnvCube.a_Position = gl.getAttribLocation(programEnvCube, 'a_Position');
-  programEnvCube.u_envCubeMap = gl.getUniformLocation(programEnvCube, 'u_envCubeMap');
-  programEnvCube.u_viewDirectionProjectionInverse = gl.getUniformLocation(programEnvCube, 'u_viewDirectionProjectionInverse');
-
-  program = compileShader(gl, VSHADER_SOURCE, FSHADER_SOURCE);
-  program.a_Position = gl.getAttribLocation(program, 'a_Position');
-  program.a_Normal = gl.getAttribLocation(program, 'a_Normal');
-  program.u_MvpMatrix = gl.getUniformLocation(program, 'u_MvpMatrix');
-  program.u_modelMatrix = gl.getUniformLocation(program, 'u_modelMatrix');
-  program.u_normalMatrix = gl.getUniformLocation(program, 'u_normalMatrix');
-  program.u_ViewPosition = gl.getUniformLocation(program, 'u_ViewPosition');
-  program.u_envCubeMap = gl.getUniformLocation(program, 'u_envCubeMap');
-  program.u_LightPosition = gl.getUniformLocation(program, 'u_LightPosition');
-  program.u_Ka = gl.getUniformLocation(program, 'u_Ka');
-  program.u_Kd = gl.getUniformLocation(program, 'u_Kd');
-  program.u_Ks = gl.getUniformLocation(program, 'u_Ks');
-  program.u_Shininess = gl.getUniformLocation(program, 'u_Shininess');
-
-  programTexture = compileShader(gl, VSHADER_SOURCE_TEXTURE, FSHADER_SOURCE_TEXTURE);
-  programTexture.a_Position = gl.getAttribLocation(programTexture, 'a_Position');
-  programTexture.a_Normal = gl.getAttribLocation(programTexture, 'a_Normal');
-  programTexture.a_TexCoord = gl.getAttribLocation(programTexture, 'a_TexCoord');
-  programTexture.u_MvpMatrix = gl.getUniformLocation(programTexture, 'u_MvpMatrix');
-  programTexture.u_modelMatrix = gl.getUniformLocation(programTexture, 'u_modelMatrix');
-  programTexture.u_normalMatrix = gl.getUniformLocation(programTexture, 'u_normalMatrix');
-  programTexture.u_LightPosition = gl.getUniformLocation(programTexture, 'u_LightPosition');
-  programTexture.u_Ka = gl.getUniformLocation(programTexture, 'u_Ka');
-  programTexture.u_Kd = gl.getUniformLocation(programTexture, 'u_Kd');
-  programTexture.u_Ks = gl.getUniformLocation(programTexture, 'u_Ks');
-  programTexture.u_Shininess = gl.getUniformLocation(programTexture, 'u_Shininess');
-  programTexture.u_Sampler = gl.getUniformLocation(programTexture, 'u_Sampler');
-
-  response = await fetch('./object/cube.obj');
-  text = await response.text();
-  obj = parseOBJ(text);
-
-  for (let i = 0; i < obj.geometries.length; i++) {
-    let o = initVertexBufferForLaterUse(gl,
-      obj.geometries[i].data.position,
-      obj.geometries[i].data.normal,
-      obj.geometries[i].data.texcoord);
-    cubeObj.push(o);
-  }
-
-  response = await fetch('./object/sercups_vodka_glass.obj');
-  text = await response.text();
-  obj = parseOBJ(text);
-
-  for (let i = 0; i < obj.geometries.length; i++) {
-    let o = initVertexBufferForLaterUse(gl,
-      obj.geometries[i].data.position,
-      obj.geometries[i].data.normal,
-      obj.geometries[i].data.texcoord);
-    bottleObj.push(o);
-  }
-
-  response = await fetch('./object/cat.obj');
-  text = await response.text();
-  obj = parseOBJ(text);
-
-  for (let i = 0; i < obj.geometries.length; i++) {
-    let o = initVertexBufferForLaterUse(gl,
-      obj.geometries[i].data.position,
-      obj.geometries[i].data.normal,
-      obj.geometries[i].data.texcoord);
-    catObj.push(o);
-  }
-
-  cubeMapTex = initCubeTexture("./cubemap/pos-x.png", "./cubemap/neg-x.png", "./cubemap/pos-y.png", "./cubemap/neg-y.png",
-    "./cubemap/pos-z.png", "./cubemap/neg-z.png", 512, 512)
-
-  quadObj = initVertexBufferForLaterUse(gl, quad);
-
+  load_all_model();
   gl.enable(gl.DEPTH_TEST);
 
   await load_all_texture();
+  fbo = initFrameBuffer(gl);
   draw();
 
   canvas.onmousedown = function (ev) { mouseDown(ev) };
@@ -171,6 +90,74 @@ function draw() {
   vpFromCameraRotationOnly.set(projMatrix).multiply(viewMatrixRotationOnly);
   let vpFromCameraInverse = vpFromCameraRotationOnly.invert();
 
+  // === Shadow map rendering ===
+  gl.useProgram(shadowProgram);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+  gl.viewport(0, 0, offScreenWidth, offScreenHeight);
+  gl.clearColor(0.0, 0.0, 0.0, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.DEPTH_TEST);
+
+  // Floor
+  let floorMatrix = new Matrix4();
+  floorMatrix.setIdentity();
+  floorMatrix.translate(0.0, -2.5, -2.0);
+  floorMatrix.scale(4.0, 0.1, 4.0);
+  let floorMvpFromLight = drawOffScreen(cubeObj, floorMatrix);
+
+  // mobile board
+  let boardMatrix = new Matrix4();
+  boardMatrix.setIdentity();
+  boardMatrix.translate(boardPosition, 3.5, -2.5);
+  boardMatrix.scale(0.6, 0.25, 0.25);
+  let boardMvpFromLight = drawOffScreen(cubeObj, boardMatrix);
+
+  // vodka bottle
+  let bottleMatrix = new Matrix4();
+  bottleMatrix.setIdentity();
+  bottleMatrix.translate(0.0, 0.0, -2.0);
+  bottleMatrix.scale(2.5, 2.5, 1.0);
+  let bottleMvpFromLight = drawOffScreen(bottleObj, bottleMatrix);
+
+  // cat
+  let catMatrix = new Matrix4();
+  catMatrix.setIdentity();
+  catMatrix.translate(2.5, -3.0, -2.0);
+  catMatrix.rotate(-90, 1, 0, 0);
+  catMatrix.scale(5.0, 5.0, 5.0);
+  let catMvpFromLight = drawOffScreen(catObj, catMatrix);
+
+  // === Main object rendering ===
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.clearColor(0.4, 0.4, 0.4, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.DEPTH_TEST);
+
+  gl.useProgram(program);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.clearColor(0.4,0.4,0.4,1);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.DEPTH_TEST);
+
+  drawOneObjectOnScreen(cubeObj, floorMatrix, floorMvpFromLight, 1.0, 0.4, 0.4);
+  drawOneObjectOnScreen(cubeObj, boardMatrix, boardMvpFromLight, 0.6, 0.25, 0.25);
+  drawOneObjectOnScreen(bottleObj, bottleMatrix, bottleMvpFromLight, 2.5, 2.5, 1.0);
+
+  // cat
+  gl.useProgram(programTexture);
+  gl.depthFunc(gl.LESS);
+  drawOneObjectWithTex(catObj, catMatrix, viewMatrix, projMatrix, programTexture);
+
+  // main control
+  if (third_view) {
+    MainControlMatrix.setIdentity();
+    MainControlMatrix.translate(firstcameraX, firstcameraY, firstcameraZ);
+    MainControlMatrix.scale(0.1, 0.1, 0.1);
+    drawOneObject(cubeObj, MainControlMatrix, viewMatrix, projMatrix);
+  }
+
   // === Skybox ===
   gl.useProgram(programEnvCube);
   gl.depthFunc(gl.LEQUAL);
@@ -181,43 +168,6 @@ function draw() {
   gl.uniform1i(programEnvCube.u_envCubeMap, 0);
   initAttributeVariable(gl, programEnvCube.a_Position, quadObj.vertexBuffer);
   gl.drawArrays(gl.TRIANGLES, 0, quadObj.numVertices);
-
-  // === Main object rendering ===
-  gl.useProgram(program);
-  gl.depthFunc(gl.LESS);
-  gl.uniform3f(program.u_ViewPosition, cameraX, cameraY, cameraZ);
-  gl.uniform1i(program.u_envCubeMap, 0);
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubeMapTex);
-
-  // mobile board
-  boardMatrix.setIdentity();
-  boardMatrix.translate(boardPosition, 2.0, -2.5);
-  boardMatrix.scale(0.6, 0.25, 0.25);
-  drawOneObject(cubeObj, boardMatrix, viewMatrix, projMatrix);
-
-  // vodka bottle
-  bottleMatrix.setIdentity();
-  bottleMatrix.translate(0.0, -1.0, -2.0);
-  bottleMatrix.scale(2.5, 2.5, 1.0);
-  drawOneObject(bottleObj, bottleMatrix, viewMatrix, projMatrix);
-
-  // cat
-  gl.useProgram(programTexture);
-  gl.depthFunc(gl.LESS);
-  catMatrix.setIdentity();
-  catMatrix.translate(2.5, -2.0, -2.0);
-  catMatrix.rotate(-90, 1, 0, 0);
-  catMatrix.scale(5.0, 5.0, 5.0);
-  drawOneObjectWithTex(catObj, catMatrix, viewMatrix, projMatrix, programTexture);
-
-  // main control
-  if (third_view) {
-    MainControlMatrix.setIdentity();
-    MainControlMatrix.translate(firstcameraX, firstcameraY, firstcameraZ);
-    MainControlMatrix.scale(0.1, 0.1, 0.1);
-    drawOneObject(cubeObj, MainControlMatrix, viewMatrix, projMatrix);
-  }
 }
 
 function drawOneObject(obj, mdlMatrix, viewMatrix, projMatrix) {

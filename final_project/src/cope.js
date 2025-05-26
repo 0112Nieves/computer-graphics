@@ -1,3 +1,7 @@
+var texCount = 0;
+var shadowMap;
+var textures = {};
+
 function compileShader(gl, vShaderText, fShaderText) {
   //////Build vertex and fragment shader objects
   var vertexShader = gl.createShader(gl.VERTEX_SHADER)
@@ -324,4 +328,120 @@ function initCubeTexture(
     );
 
     return texture;
+}
+
+function drawOneObjectOnShadowfbo(obj, mdlMatrix) {
+    var mvpFromLight = new Matrix4();
+    //model Matrix (part of the mvp matrix)
+    //mvp: projection * view * model matrix
+    mvpFromLight.setPerspective(150, offScreenWidth / offScreenHeight, 1, 1000);
+    mvpFromLight.lookAt(lightX, lightY, lightZ, 5, 0, 0, 0, 1, 0);
+    mvpFromLight.multiply(mdlMatrix);
+
+    gl.useProgram(shadowProgram);
+    gl.uniformMatrix4fv(
+        shadowProgram.u_MvpMatrix,
+        false,
+        mvpFromLight.elements
+    );
+
+    for (let i = 0; i < obj.length; i++) {
+        initAttributeVariable(
+            gl,
+            shadowProgram.a_Position,
+            obj[i].vertexBuffer
+        );
+        gl.drawArrays(gl.TRIANGLES, 0, obj[i].numVertices);
+    }
+
+    return mvpFromLight;
+}
+
+function drawOffScreen(obj, mdlMatrix){
+  var mvpFromLight = new Matrix4();
+  //model Matrix (part of the mvp matrix)
+  let modelMatrix = new Matrix4();
+  modelMatrix.setRotate(angleY, 1, 0, 0);
+  modelMatrix.rotate(angleX, 0, 1, 0);
+  modelMatrix.multiply(mdlMatrix);
+  //mvp: projection * view * model matrix  
+  mvpFromLight.setPerspective(70, offScreenWidth/offScreenHeight, 1, 15);
+  mvpFromLight.lookAt(lightX, lightY, lightZ, 0, 0, 0, 0, 1, 0);
+  mvpFromLight.multiply(modelMatrix);
+
+  gl.uniformMatrix4fv(shadowProgram.u_MvpMatrix, false, mvpFromLight.elements);
+
+  for( let i=0; i < obj.length; i ++ ){
+    initAttributeVariable(gl, shadowProgram.a_Position, obj[i].vertexBuffer);
+    gl.drawArrays(gl.TRIANGLES, 0, obj[i].numVertices);
+  }
+
+  return mvpFromLight;
+}
+
+function drawOneObjectOnScreen(obj, mdlMatrix, mvpFromLight, colorR, colorG, colorB){
+  var mvpFromCamera = new Matrix4();
+  //model Matrix (part of the mvp matrix)
+  let modelMatrix = new Matrix4();
+  modelMatrix.setRotate(angleY, 1, 0, 0);//for mouse rotation
+  modelMatrix.rotate(angleX, 0, 1, 0);//for mouse rotation
+  modelMatrix.multiply(mdlMatrix);
+  //mvp: projection * view * model matrix  
+  mvpFromCamera.setPerspective(60, 1, 1, 15);
+  mvpFromCamera.lookAt(cameraX, cameraY, cameraZ, 0, 0, 0, 0, 1, 0);
+  mvpFromCamera.multiply(modelMatrix);
+
+  //normal matrix
+  let normalMatrix = new Matrix4();
+  normalMatrix.setInverseOf(modelMatrix);
+  normalMatrix.transpose();
+
+  gl.uniform3f(program.u_LightPosition, lightX, lightY, lightZ);
+  gl.uniform3f(program.u_ViewPosition, cameraX, cameraY, cameraZ);
+  gl.uniform1f(program.u_Ka, 0.2);
+  gl.uniform1f(program.u_Kd, 0.7);
+  gl.uniform1f(program.u_Ks, 1.0);
+  gl.uniform1f(program.u_shininess, 10.0);
+  gl.uniform1i(program.u_ShadowMap, 0);
+  gl.uniform3f(program.u_Color, colorR, colorG, colorB);
+
+  gl.uniformMatrix4fv(program.u_MvpMatrix, false, mvpFromCamera.elements);
+  gl.uniformMatrix4fv(program.u_modelMatrix, false, modelMatrix.elements);
+  gl.uniformMatrix4fv(program.u_normalMatrix, false, normalMatrix.elements);
+  gl.uniformMatrix4fv(program.u_MvpMatrixOfLight, false, mvpFromLight.elements);
+
+  gl.activeTexture(gl.TEXTURE0);   
+  gl.bindTexture(gl.TEXTURE_2D, fbo.texture); 
+
+  for( let i=0; i < obj.length; i ++ ){
+    initAttributeVariable(gl, program.a_Position, obj[i].vertexBuffer);
+    initAttributeVariable(gl, program.a_Normal, obj[i].normalBuffer);
+    gl.drawArrays(gl.TRIANGLES, 0, obj[i].numVertices);
+  }
+}
+
+function initFrameBuffer(gl){
+  //create and set up a texture object as the color buffer
+  var texture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, offScreenWidth, offScreenHeight,
+                  0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  
+
+  //create and setup a render buffer as the depth buffer
+  var depthBuffer = gl.createRenderbuffer();
+  gl.bindRenderbuffer(gl.RENDERBUFFER, depthBuffer);
+  gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, 
+                          offScreenWidth, offScreenHeight);
+
+  //create and setup framebuffer: linke the color and depth buffer to it
+  var frameBuffer = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, 
+                            gl.TEXTURE_2D, texture, 0);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, 
+                              gl.RENDERBUFFER, depthBuffer);
+  frameBuffer.texture = texture;
+  return frameBuffer;
 }
