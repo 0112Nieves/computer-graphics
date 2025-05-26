@@ -13,7 +13,7 @@ var boardPosition = 0.5;
 let boardDirection = 1;
 var lightX = 5.0, lightY = 5.0, lightZ = 5.0;
 var fbo;
-var offScreenWidth = 512, offScreenHeight = 512;
+var offScreenWidth = 8192, offScreenHeight = 8192;
 
 var MainControlMatrix = new Matrix4();
 var textures = {};
@@ -134,7 +134,7 @@ function draw() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);
 
-  gl.useProgram(program);
+  // gl.useProgram(program);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.clearColor(0.4,0.4,0.4,1);
