@@ -359,19 +359,20 @@ function drawOneObjectOnShadowfbo(obj, mdlMatrix) {
 
 function drawOffScreen(obj, mdlMatrix){
   var mvpFromLight = new Matrix4();
-  //model Matrix (part of the mvp matrix)
   let modelMatrix = new Matrix4();
-  modelMatrix.setRotate(angleY, 1, 0, 0);
-  modelMatrix.rotate(angleX, 0, 1, 0);
-  modelMatrix.multiply(mdlMatrix);
-  //mvp: projection * view * model matrix  
-  mvpFromLight.setPerspective(70, offScreenWidth/offScreenHeight, 1, 15);
-  mvpFromLight.lookAt(lightX, lightY, lightZ, 0, 0, 0, 0, 1, 0);
-  mvpFromLight.multiply(modelMatrix);
+  modelMatrix.set(mdlMatrix);
+
+  let lightViewMatrix = new Matrix4();
+  lightViewMatrix.setLookAt(lightX, lightY, lightZ, 0, 0, 0, 0, 1, 0);
+
+  let lightProjMatrix = new Matrix4();
+  lightProjMatrix.setPerspective(70, offScreenWidth/offScreenHeight, 1, 15);
+
+  mvpFromLight.set(lightProjMatrix).multiply(lightViewMatrix).multiply(modelMatrix);
 
   gl.uniformMatrix4fv(shadowProgram.u_MvpMatrix, false, mvpFromLight.elements);
 
-  for( let i=0; i < obj.length; i ++ ){
+  for(let i = 0; i < obj.length; i++) {
     initAttributeVariable(gl, shadowProgram.a_Position, obj[i].vertexBuffer);
     gl.drawArrays(gl.TRIANGLES, 0, obj[i].numVertices);
   }
@@ -379,19 +380,15 @@ function drawOffScreen(obj, mdlMatrix){
   return mvpFromLight;
 }
 
-function drawOneObjectOnScreen(obj, mdlMatrix, mvpFromLight, colorR, colorG, colorB){
+function drawOneObjectOnScreen(obj, mdlMatrix, mvpFromLight, projMatrix, viewMatrix, colorR, colorG, colorB) {
+  gl.useProgram(program);
+  gl.depthFunc(gl.LESS);
+  
   var mvpFromCamera = new Matrix4();
-  //model Matrix (part of the mvp matrix)
   let modelMatrix = new Matrix4();
-  modelMatrix.setRotate(angleY, 1, 0, 0);//for mouse rotation
-  modelMatrix.rotate(angleX, 0, 1, 0);//for mouse rotation
-  modelMatrix.multiply(mdlMatrix);
-  //mvp: projection * view * model matrix  
-  mvpFromCamera.setPerspective(60, 1, 1, 15);
-  mvpFromCamera.lookAt(cameraX, cameraY, cameraZ, 0, 0, 0, 0, 1, 0);
-  mvpFromCamera.multiply(modelMatrix);
+  modelMatrix.set(mdlMatrix);
+  mvpFromCamera.set(projMatrix).multiply(viewMatrix).multiply(modelMatrix);
 
-  //normal matrix
   let normalMatrix = new Matrix4();
   normalMatrix.setInverseOf(modelMatrix);
   normalMatrix.transpose();
@@ -413,7 +410,7 @@ function drawOneObjectOnScreen(obj, mdlMatrix, mvpFromLight, colorR, colorG, col
   gl.activeTexture(gl.TEXTURE0);   
   gl.bindTexture(gl.TEXTURE_2D, fbo.texture); 
 
-  for( let i=0; i < obj.length; i ++ ){
+  for (let i = 0; i < obj.length; i++) {
     initAttributeVariable(gl, program.a_Position, obj[i].vertexBuffer);
     initAttributeVariable(gl, program.a_Normal, obj[i].normalBuffer);
     gl.drawArrays(gl.TRIANGLES, 0, obj[i].numVertices);

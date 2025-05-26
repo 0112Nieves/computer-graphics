@@ -122,7 +122,7 @@ function draw() {
   // cat
   let catMatrix = new Matrix4();
   catMatrix.setIdentity();
-  catMatrix.translate(2.5, -3.0, -2.0);
+  catMatrix.translate(2.5, -2.3, -2.0);
   catMatrix.rotate(-90, 1, 0, 0);
   catMatrix.scale(5.0, 5.0, 5.0);
   let catMvpFromLight = drawOffScreen(catObj, catMatrix);
@@ -141,9 +141,9 @@ function draw() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);
 
-  drawOneObjectOnScreen(cubeObj, floorMatrix, floorMvpFromLight, 1.0, 0.4, 0.4);
-  drawOneObjectOnScreen(cubeObj, boardMatrix, boardMvpFromLight, 0.6, 0.25, 0.25);
-  drawOneObjectOnScreen(bottleObj, bottleMatrix, bottleMvpFromLight, 2.5, 2.5, 1.0);
+  drawOneObjectOnScreen(cubeObj, floorMatrix, floorMvpFromLight, projMatrix, viewMatrix, 1.0, 0.4, 0.4);
+  drawOneObjectOnScreen(cubeObj, boardMatrix, boardMvpFromLight, projMatrix, viewMatrix, 0.6, 0.25, 0.25);
+  drawOneObjectOnScreen(bottleObj, bottleMatrix, bottleMvpFromLight, projMatrix, viewMatrix, 2.5, 2.5, 1.0);
 
   // cat
   gl.useProgram(programTexture);
