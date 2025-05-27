@@ -60,5 +60,5 @@ function init_normal_program() {
     program.u_Ks = gl.getUniformLocation(program, 'u_Ks');
     program.u_shininess = gl.getUniformLocation(program, 'u_shininess');
     program.u_ShadowMap = gl.getUniformLocation(program, "u_ShadowMap");
-    program.u_Color = gl.getUniformLocation(program, 'u_Color'); 
+    program.u_envCubeMap = gl.getUniformLocation(program, 'u_envCubeMap');
 }

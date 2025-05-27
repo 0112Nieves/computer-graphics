@@ -3,18 +3,42 @@
   <head>
     <meta charset="utf-8" />
     <title>WebPage Title</title>
+    <style>
+      .container {
+        display: flex;
+        align-items: flex-start;
+      }
+      .text-panel {
+        margin-left: 20px;
+        padding: 20px;
+        background-color: rgba(255, 255, 255, 0.9);
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+      }
+    </style>
   </head>
 
   <body onload="main()">
-    <canvas id="webgl" width="800" height="800">
-      Please use a browser that support "canvas"
-    </canvas>
-        <script src="./src/cuon-matrix.js"></script>
-        <script src="./src/WebGL.js"></script>
-        <script src="./src/init.js"></script>
-        <script src="./src/cope.js"></script>
-        <script src="./src/interface.js"></script>
-        <script src="./src/shader.js"></script>
-        <script src="./src/set_mdl.js"></script>
+    <div class="container">
+      <canvas id="webgl" width="800" height="800">
+        Please use a browser that support "canvas"
+      </canvas>
+      <div class="text-panel">
+        <h3>操作說明</h3>
+        <p>WSAD/↑↓→←: 移動player</p>
+        <p>可藉由滑鼠移動畫面視角</p>
+        <p>C: 切換第一/第三視角</p>
+        <p>空格鍵: 物體掉落</p>
+      </div>
+    </div>
+    <script src="./src/cuon-matrix.js"></script>
+    <script src="./src/WebGL.js"></script>
+    <script src="./src/init.js"></script>
+    <script src="./src/cope.js"></script>
+    <script src="./src/interface.js"></script>
+    <script src="./src/shader.js"></script>
+    <script src="./src/set_mdl.js"></script>
   </body>
 </html>

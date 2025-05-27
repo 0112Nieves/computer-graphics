@@ -19,23 +19,29 @@ var FSHADER_SOURCE_ENVCUBE = `
   }
 `;
 
-// normal + 陰影
+// 折射 + 反射 + 陰影
 var VSHADER_SOURCE = `
     attribute vec4 a_Position;
     attribute vec4 a_Normal;
     uniform mat4 u_MvpMatrix;
     uniform mat4 u_modelMatrix;
     uniform mat4 u_normalMatrix;
-    uniform mat4 u_ProjMatrixFromLight;
     uniform mat4 u_MvpMatrixOfLight;
-    varying vec4 v_PositionFromLight;
+    uniform vec3 u_ViewPosition;
+
     varying vec3 v_Normal;
     varying vec3 v_PositionInWorld;
+    varying vec4 v_PositionFromLight;
+    varying vec3 v_ViewDirection;
+
     void main(){
         gl_Position = u_MvpMatrix * a_Position;
-        v_PositionInWorld = (u_modelMatrix * a_Position).xyz; 
+        vec4 worldPos = u_modelMatrix * a_Position;
+        v_PositionInWorld = worldPos.xyz;
         v_Normal = normalize(vec3(u_normalMatrix * a_Normal));
         v_PositionFromLight = u_MvpMatrixOfLight * a_Position;
+
+        v_ViewDirection = normalize(u_ViewPosition - v_PositionInWorld);
     }    
 `;
 
@@ -47,64 +53,65 @@ var FSHADER_SOURCE = `
     uniform float u_Kd;
     uniform float u_Ks;
     uniform float u_shininess;
-    uniform vec3 u_Color;
     uniform sampler2D u_ShadowMap;
+    uniform samplerCube u_envCubeMap;
+
     varying vec3 v_Normal;
     varying vec3 v_PositionInWorld;
-    varying vec2 v_TexCoord;
+    varying vec3 v_ViewDirection;
     varying vec4 v_PositionFromLight;
+
     const float deMachThreshold = 0.002;
+    const float refractiveIndex = 1.25;
+    const float fresnelPower = 5.0;
 
     float getShadow(vec4 positionFromLight) {
         vec3 projCoords = positionFromLight.xyz / positionFromLight.w;
         projCoords = projCoords * 0.5 + 0.5;
-        
+
         float currentDepth = projCoords.z;
-        float shadow = 0.0;
-        
-        // 使用 5x5 PCF 核心
-        vec2 texelSize = 1.0 / vec2(1024.0, 1024.0);
-        for(int x = -2; x <= 2; ++x) {
-            for(int y = -2; y <= 2; ++y) {
+        float shadow = 1.0;
+
+        vec2 texelSize = 1.0 / vec2(512.0, 512.0);
+        for (int x = -3; x <= 3; ++x) {
+            for (int y = -3; y <= 3; ++y) {
                 float pcfDepth = texture2D(u_ShadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
-                // 使用平滑過渡
                 float diff = currentDepth - pcfDepth;
-                float weight = smoothstep(deMachThreshold, deMachThreshold * 2.0, diff);
+                float weight = smoothstep(deMachThreshold, deMachThreshold * 3.0, diff);
                 shadow += 1.0 - weight;
             }
         }
-        shadow /= 25.0;  // 5x5 核心
-        
-        // 增加陰影柔和度
-        shadow = pow(shadow, 1.5);
-        
+        shadow /= 49.0;
+        shadow = smoothstep(0.0, 1.0, shadow);
         return shadow;
     }
 
-    void main(){ 
-        vec3 ambientLightColor = u_Color;
-        vec3 diffuseLightColor = u_Color;
-        vec3 specularLightColor = vec3(1.0, 1.0, 1.0);        
-
-        vec3 ambient = ambientLightColor * u_Ka;
-
+    void main() {
         vec3 normal = normalize(v_Normal);
-        vec3 lightDirection = normalize(u_LightPosition - v_PositionInWorld);
-        float nDotL = max(dot(lightDirection, normal), 0.0);
-        vec3 diffuse = diffuseLightColor * u_Kd * nDotL;
+        vec3 viewDir = normalize(v_ViewDirection);
+        vec3 refractDir = refract(-viewDir, normal, 1.0 / refractiveIndex);
+        vec3 refractColor = textureCube(u_envCubeMap, refractDir).rgb;
 
-        vec3 specular = vec3(0.0, 0.0, 0.0);
-        if(nDotL > 0.0) {
-            vec3 R = reflect(-lightDirection, normal);
-            vec3 V = normalize(u_ViewPosition - v_PositionInWorld); 
-            float specAngle = clamp(dot(R, V), 0.0, 1.0);
-            specular = u_Ks * pow(specAngle, u_shininess) * specularLightColor; 
-        }
+        // 反射
+        vec3 reflectDir = reflect(viewDir, normal);
+        vec3 reflectColor = textureCube(u_envCubeMap, reflectDir).rgb;
 
+        // Fresnel（邊緣高反射）
+        float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), fresnelPower);
+        vec3 glassColor = mix(refractColor, reflectColor, fresnel);
+
+        // 陰影遮蔽
         float shadow = getShadow(v_PositionFromLight);
-        vec3 lightingColor = ambient + (diffuse + specular) * shadow;
-        
-        gl_FragColor = vec4(lightingColor, 1.0);
+        glassColor *= shadow;
+
+        // 高光
+        vec3 lightDir = normalize(u_LightPosition - v_PositionInWorld);
+        vec3 halfDir = normalize(lightDir + viewDir);
+        float specular = pow(max(dot(normal, halfDir), 0.0), u_shininess);
+        glassColor += vec3(1.0) * specular * u_Ks;
+
+        // 最終顏色（半透明玻璃）
+        gl_FragColor = vec4(glassColor, 0.5);
     }
 `;
 

@@ -15,7 +15,6 @@ var lightX = 5.0, lightY = 5.0, lightZ = 5.0;
 var fbo;
 var offScreenWidth = 8192, offScreenHeight = 8192;
 
-var MainControlMatrix = new Matrix4();
 var textures = {};
 
 async function main() {
@@ -108,16 +107,25 @@ function draw() {
   // mobile board
   let boardMatrix = new Matrix4();
   boardMatrix.setIdentity();
-  boardMatrix.translate(boardPosition, 3.5, -2.5);
+  boardMatrix.translate(boardPosition, 3.7, -2.5);
   boardMatrix.scale(0.6, 0.25, 0.25);
   let boardMvpFromLight = drawOffScreen(cubeObj, boardMatrix);
 
   // vodka bottle
   let bottleMatrix = new Matrix4();
   bottleMatrix.setIdentity();
-  bottleMatrix.translate(0.0, 0.0, -2.0);
+  bottleMatrix.translate(0.0, 0.3, -2.0);
   bottleMatrix.scale(2.5, 2.5, 1.0);
   let bottleMvpFromLight = drawOffScreen(bottleObj, bottleMatrix);
+
+  let MainControlMatrix = new Matrix4();
+  let MainControlMvpFromLight = new Matrix4();
+  if(third_view){
+    MainControlMatrix.setIdentity();
+    MainControlMatrix.translate(firstcameraX, firstcameraY, firstcameraZ);
+    MainControlMatrix.scale(0.1, 0.1, 0.1);
+    drawOffScreen(cubeObj, MainControlMatrix);
+  }
 
   // cat
   let catMatrix = new Matrix4();
@@ -134,16 +142,16 @@ function draw() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);
 
-  // gl.useProgram(program);
+  gl.useProgram(program);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.clearColor(0.4,0.4,0.4,1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);
 
-  drawOneObjectOnScreen(cubeObj, floorMatrix, floorMvpFromLight, projMatrix, viewMatrix, 1.0, 0.4, 0.4);
-  drawOneObjectOnScreen(cubeObj, boardMatrix, boardMvpFromLight, projMatrix, viewMatrix, 0.6, 0.25, 0.25);
-  drawOneObjectOnScreen(bottleObj, bottleMatrix, bottleMvpFromLight, projMatrix, viewMatrix, 2.5, 2.5, 1.0);
+  drawOneObjectOnScreen(cubeObj, floorMatrix, floorMvpFromLight, projMatrix, viewMatrix);
+  drawOneObjectOnScreen(cubeObj, boardMatrix, boardMvpFromLight, projMatrix, viewMatrix);
+  drawOneObjectOnScreen(bottleObj, bottleMatrix, bottleMvpFromLight, projMatrix, viewMatrix);
 
   // cat
   gl.useProgram(programTexture);
@@ -152,10 +160,7 @@ function draw() {
 
   // main control
   if (third_view) {
-    MainControlMatrix.setIdentity();
-    MainControlMatrix.translate(firstcameraX, firstcameraY, firstcameraZ);
-    MainControlMatrix.scale(0.1, 0.1, 0.1);
-    drawOneObject(cubeObj, MainControlMatrix, viewMatrix, projMatrix);
+    drawOneObjectOnScreen(cubeObj, MainControlMatrix, MainControlMvpFromLight, projMatrix, viewMatrix);
   }
 
   // === Skybox ===

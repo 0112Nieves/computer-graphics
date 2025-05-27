@@ -366,7 +366,7 @@ function drawOffScreen(obj, mdlMatrix){
   lightViewMatrix.setLookAt(lightX, lightY, lightZ, 0, 0, 0, 0, 1, 0);
 
   let lightProjMatrix = new Matrix4();
-  lightProjMatrix.setPerspective(70, offScreenWidth/offScreenHeight, 1, 15);
+  lightProjMatrix.setPerspective(60, offScreenWidth/offScreenHeight, 1, 15);  // 調整視角
 
   mvpFromLight.set(lightProjMatrix).multiply(lightViewMatrix).multiply(modelMatrix);
 
@@ -380,7 +380,7 @@ function drawOffScreen(obj, mdlMatrix){
   return mvpFromLight;
 }
 
-function drawOneObjectOnScreen(obj, mdlMatrix, mvpFromLight, projMatrix, viewMatrix, colorR, colorG, colorB) {
+function drawOneObjectOnScreen(obj, mdlMatrix, mvpFromLight, projMatrix, viewMatrix) {
   gl.useProgram(program);
   gl.depthFunc(gl.LESS);
   
@@ -393,28 +393,42 @@ function drawOneObjectOnScreen(obj, mdlMatrix, mvpFromLight, projMatrix, viewMat
   normalMatrix.setInverseOf(modelMatrix);
   normalMatrix.transpose();
 
+  // 設置光照和材質屬性
   gl.uniform3f(program.u_LightPosition, lightX, lightY, lightZ);
   gl.uniform3f(program.u_ViewPosition, cameraX, cameraY, cameraZ);
-  gl.uniform1f(program.u_Ka, 0.2);
-  gl.uniform1f(program.u_Kd, 0.7);
-  gl.uniform1f(program.u_Ks, 1.0);
-  gl.uniform1f(program.u_shininess, 10.0);
-  gl.uniform1i(program.u_ShadowMap, 0);
-  gl.uniform3f(program.u_Color, colorR, colorG, colorB);
+  gl.uniform1f(program.u_Ka, 0.1);  // 降低環境光
+  gl.uniform1f(program.u_Kd, 0.3);  // 降低漫反射
+  gl.uniform1f(program.u_Ks, 1.0);  // 增加鏡面反射
+  gl.uniform1f(program.u_shininess, 128.0);  // 增加高光銳度
 
+  // 設置矩陣
   gl.uniformMatrix4fv(program.u_MvpMatrix, false, mvpFromCamera.elements);
   gl.uniformMatrix4fv(program.u_modelMatrix, false, modelMatrix.elements);
   gl.uniformMatrix4fv(program.u_normalMatrix, false, normalMatrix.elements);
   gl.uniformMatrix4fv(program.u_MvpMatrixOfLight, false, mvpFromLight.elements);
 
+  // 設置陰影貼圖
   gl.activeTexture(gl.TEXTURE0);   
   gl.bindTexture(gl.TEXTURE_2D, fbo.texture); 
+  gl.uniform1i(program.u_ShadowMap, 0);
+
+  // 設置環境貼圖
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubeMapTex);
+  gl.uniform1i(program.u_envCubeMap, 1);
+
+  // 啟用混合
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
   for (let i = 0; i < obj.length; i++) {
     initAttributeVariable(gl, program.a_Position, obj[i].vertexBuffer);
     initAttributeVariable(gl, program.a_Normal, obj[i].normalBuffer);
     gl.drawArrays(gl.TRIANGLES, 0, obj[i].numVertices);
   }
+
+  // 禁用混合
+  gl.disable(gl.BLEND);
 }
 
 function initFrameBuffer(gl){
@@ -424,12 +438,14 @@ function initFrameBuffer(gl){
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, offScreenWidth, offScreenHeight,
                   0, gl.RGBA, gl.UNSIGNED_BYTE, null);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
   //create and setup a render buffer as the depth buffer
   var depthBuffer = gl.createRenderbuffer();
   gl.bindRenderbuffer(gl.RENDERBUFFER, depthBuffer);
-  gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, 
+  gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, 
                           offScreenWidth, offScreenHeight);
 
   //create and setup framebuffer: linke the color and depth buffer to it
