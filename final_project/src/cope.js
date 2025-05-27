@@ -38,7 +38,7 @@ function compileShader(gl, vShaderText, fShaderText) {
   return program;
 }
 
-function initAttributeVariable(gl, a_attribute, buffer) {
+function initAttributeVariable(gl, a_attribute, buffer){
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
   gl.vertexAttribPointer(a_attribute, buffer.num, buffer.type, false, 0, 0);
   gl.enableVertexAttribArray(a_attribute);
@@ -62,13 +62,15 @@ function initArrayBufferForLaterUse(gl, data, num, type) {
   return buffer;
 }
 
-function initVertexBufferForLaterUse(gl, vertices, normals, texCoords) {
+function initVertexBufferForLaterUse(gl, vertices, normals, texCoords, tagents, bitagents){
   var nVertices = vertices.length / 3;
 
   var o = new Object();
   o.vertexBuffer = initArrayBufferForLaterUse(gl, new Float32Array(vertices), 3, gl.FLOAT);
-  if (normals != null) o.normalBuffer = initArrayBufferForLaterUse(gl, new Float32Array(normals), 3, gl.FLOAT);
-  if (texCoords != null) o.texCoordBuffer = initArrayBufferForLaterUse(gl, new Float32Array(texCoords), 2, gl.FLOAT);
+  if( normals != null ) o.normalBuffer = initArrayBufferForLaterUse(gl, new Float32Array(normals), 3, gl.FLOAT);
+  if( texCoords != null ) o.texCoordBuffer = initArrayBufferForLaterUse(gl, new Float32Array(texCoords), 2, gl.FLOAT);
+  if( tagents != null ) o.tagentsBuffer = initArrayBufferForLaterUse(gl, new Float32Array(tagents), 3, gl.FLOAT);
+  if( bitagents != null ) o.bitagentsBuffer = initArrayBufferForLaterUse(gl, new Float32Array(bitagents), 3, gl.FLOAT);
   //you can have error check here
   o.numVertices = nVertices;
 
@@ -457,4 +459,121 @@ function initFrameBuffer(gl){
                               gl.RENDERBUFFER, depthBuffer);
   frameBuffer.texture = texture;
   return frameBuffer;
+}
+
+function calculateTangentSpace(position, texcoord){
+  //iterate through all triangles
+  let tagents = [];
+  let bitagents = [];
+  for( let i = 0; i < position.length/9; i++ ){
+    let v00 = position[i*9 + 0];
+    let v01 = position[i*9 + 1];
+    let v02 = position[i*9 + 2];
+    let v10 = position[i*9 + 3];
+    let v11 = position[i*9 + 4];
+    let v12 = position[i*9 + 5];
+    let v20 = position[i*9 + 6];
+    let v21 = position[i*9 + 7];
+    let v22 = position[i*9 + 8];
+    let uv00 = texcoord[i*6 + 0];
+    let uv01 = texcoord[i*6 + 1];
+    let uv10 = texcoord[i*6 + 2];
+    let uv11 = texcoord[i*6 + 3];
+    let uv20 = texcoord[i*6 + 4];
+    let uv21 = texcoord[i*6 + 5];
+
+    let deltaPos10 = v10 - v00;
+    let deltaPos11 = v11 - v01;
+    let deltaPos12 = v12 - v02;
+    let deltaPos20 = v20 - v00;
+    let deltaPos21 = v21 - v01;
+    let deltaPos22 = v22 - v02;
+
+    let deltaUV10 = uv10 - uv00;
+    let deltaUV11 = uv11 - uv01;
+    let deltaUV20 = uv20 - uv00;
+    let deltaUV21 = uv21 - uv01;
+
+    let r = 1.0 / (deltaUV10 * deltaUV21 - deltaUV11 * deltaUV20);
+    let tangentX = (deltaPos10 * deltaUV21   - deltaPos20 * deltaUV11)*r;
+    let tangentY = (deltaPos11 * deltaUV21   - deltaPos21 * deltaUV11)*r;
+    let tangentZ = (deltaPos12 * deltaUV21   - deltaPos22 * deltaUV11)*r;
+    for( let j = 0; j < 3; j++ ){
+      tagents.push(tangentX);
+      tagents.push(tangentY);
+      tagents.push(tangentZ);
+    }
+    let bitangentX = (deltaPos20 * deltaUV10   - deltaPos10 * deltaUV20)*r;
+    let bitangentY = (deltaPos21 * deltaUV10   - deltaPos11 * deltaUV20)*r;
+    let bitangentZ = (deltaPos22 * deltaUV10   - deltaPos12 * deltaUV20)*r;
+    for( let j = 0; j < 3; j++ ){
+      bitagents.push(bitangentX);
+      bitagents.push(bitangentY);
+      bitagents.push(bitangentZ);
+    }
+  }
+  let obj = {};
+  obj['tagents'] = tagents;
+  obj['bitagents'] = bitagents;
+  return obj;
+}
+
+async function loadOBJtoCreateVBO( objFile ){
+  let objComponents = [];
+  response = await fetch(objFile);
+  text = await response.text();
+  obj = parseOBJ(text);
+  for( let i=0; i < obj.geometries.length; i ++ ){
+    let tagentSpace = calculateTangentSpace(obj.geometries[i].data.position, 
+                                            obj.geometries[i].data.texcoord);
+    let o = initVertexBufferForLaterUse(gl, 
+                                        obj.geometries[i].data.position,
+                                        obj.geometries[i].data.normal, 
+                                        obj.geometries[i].data.texcoord,
+                                        tagentSpace.tagents,
+                                        tagentSpace.bitagents);
+    objComponents.push(o);
+  }
+  return objComponents;
+}
+
+function drawOneRegularObject(obj, modelMatrix, vpMatrix, colorR, colorG, colorB) {
+  gl.useProgram(programBumpMapping);
+  let mvpMatrix = new Matrix4();
+  mvpMatrix.set(vpMatrix).multiply(modelMatrix);
+
+  let normalMatrix = new Matrix4();
+  normalMatrix.setInverseOf(modelMatrix);
+  normalMatrix.transpose();
+
+  gl.uniformMatrix4fv(programBumpMapping.u_MvpMatrix, false, mvpMatrix.elements);
+  gl.uniformMatrix4fv(programBumpMapping.u_modelMatrix, false, modelMatrix.elements);
+  gl.uniformMatrix4fv(programBumpMapping.u_normalMatrix, false, normalMatrix.elements);
+  gl.uniform3f(programBumpMapping.u_LightPosition, lightX, lightY, lightZ);
+  gl.uniform3f(programBumpMapping.u_ViewPosition, cameraX, cameraY, cameraZ);
+  gl.uniform1f(programBumpMapping.u_Ka, 0.2);
+  gl.uniform1f(programBumpMapping.u_Kd, 0.7);
+  gl.uniform1f(programBumpMapping.u_Ks, 1.0);
+  gl.uniform1f(programBumpMapping.u_shininess, 40.0);
+  gl.uniform3f(programBumpMapping.u_Color, colorR, colorG, colorB);
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, textures["normalMapImage"]);
+  gl.uniform1i(programBumpMapping.u_Sampler0, 0);
+
+  for (let i = 0; i < obj.length; i++) {
+    const component = obj[i];
+    
+    if (!component.vertexBuffer || !component.texCoordBuffer || 
+        !component.tagentsBuffer || !component.bitagentsBuffer) {
+      console.error("Missing required buffers in component", i);
+      continue;
+    }
+
+    initAttributeVariable(gl, programBumpMapping.a_Position, component.vertexBuffer);
+    initAttributeVariable(gl, programBumpMapping.a_TexCoord, component.texCoordBuffer);
+    initAttributeVariable(gl, programBumpMapping.a_Tagent, component.tagentsBuffer);
+    initAttributeVariable(gl, programBumpMapping.a_Bitagent, component.bitagentsBuffer);
+    gl.drawArrays(gl.TRIANGLES, 0, component.numVertices);
+  }
 }

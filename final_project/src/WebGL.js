@@ -27,10 +27,23 @@ async function main() {
 
   init_cubemap_program();
   init_texture_program();
+  init_bumpmapping_program();
   init_normal_program();
   init_shadow_program();
 
-  load_all_model();
+  await load_all_model();
+
+  // 載入 normal map texture
+  await new Promise((resolve) => {
+    var normalMapImage = new Image();
+    normalMapImage.onload = function() {
+      initTexture(gl, normalMapImage, "normalMapImage");
+      console.log("Normal map texture loaded successfully");
+      resolve();
+    };
+    normalMapImage.src = "./texture/snow_normalMap.jpg";
+  });
+
   gl.enable(gl.DEPTH_TEST);
 
   await load_all_texture();
@@ -136,19 +149,19 @@ function draw() {
   let catMvpFromLight = drawOffScreen(catObj, catMatrix);
 
   // === Main object rendering ===
+  gl.useProgram(program);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.clearColor(0.4, 0.4, 0.4, 1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);
 
-  gl.useProgram(program);
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  gl.viewport(0, 0, canvas.width, canvas.height);
-  gl.clearColor(0.4,0.4,0.4,1);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  gl.enable(gl.DEPTH_TEST);
+  // 計算 view-projection matrix
+  let vpMatrix = new Matrix4();
+  vpMatrix.set(projMatrix).multiply(viewMatrix);
 
+  // 先渲染一般物體
+  gl.useProgram(program);
   drawOneObjectOnScreen(cubeObj, floorMatrix, floorMvpFromLight, projMatrix, viewMatrix);
   drawOneObjectOnScreen(cubeObj, boardMatrix, boardMvpFromLight, projMatrix, viewMatrix);
   drawOneObjectOnScreen(bottleObj, bottleMatrix, bottleMvpFromLight, projMatrix, viewMatrix);
@@ -162,6 +175,27 @@ function draw() {
   if (third_view) {
     drawOneObjectOnScreen(cubeObj, MainControlMatrix, MainControlMvpFromLight, projMatrix, viewMatrix);
   }
+
+  // Bump Mapping
+  gl.useProgram(programBumpMapping);
+  gl.depthFunc(gl.LESS);
+  
+
+  let mapMatrix = new Matrix4();
+  mapMatrix.setIdentity();
+  mapMatrix.translate(0.7, -1.8, 1.0);
+  mapMatrix.scale(0.3, 0.3, 0.3);
+
+  // 設置 normal map texture
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, textures["normalMapImage"]);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+  gl.uniform1i(programBumpMapping.u_Sampler0, 0);
+
+  drawOneRegularObject(mapObj, mapMatrix, vpMatrix, 0.92, 1.0, 1.0);
 
   // === Skybox ===
   gl.useProgram(programEnvCube);
@@ -221,18 +255,20 @@ async function load_all_texture() {
     });
 }
 
-function initTexture(gl, img, texKey) {
-    var tex = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, tex);
+function initTexture(gl, img, texKey){
+  var tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
 
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
+  // Set the parameters so we can render any size image.
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  // Upload the image into the texture.
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
 
-    textures[texKey] = tex;
+  textures[texKey] = tex;
+
+  texCount++;
+  if( texCount == numTextures)draw();
 }
 
 function drawOneObjectWithTex(obj, mdlMatrix, viewMatrix, projMatrix, program) {

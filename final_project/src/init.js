@@ -62,3 +62,22 @@ function init_normal_program() {
     program.u_ShadowMap = gl.getUniformLocation(program, "u_ShadowMap");
     program.u_envCubeMap = gl.getUniformLocation(program, 'u_envCubeMap');
 }
+
+function init_bumpmapping_program() {
+    programBumpMapping = compileShader(gl, VSHADER_SOURCE_BUMPMAPPING, FSHADER_SOURCE_BUMPMAPPING);
+    programBumpMapping.a_Position = gl.getAttribLocation(programBumpMapping, 'a_Position'); 
+    programBumpMapping.a_TexCoord = gl.getAttribLocation(programBumpMapping, 'a_TexCoord'); 
+    programBumpMapping.a_Tagent = gl.getAttribLocation(programBumpMapping, 'a_Tagent'); 
+    programBumpMapping.a_Bitagent = gl.getAttribLocation(programBumpMapping, 'a_Bitagent'); 
+    programBumpMapping.u_MvpMatrix = gl.getUniformLocation(programBumpMapping, 'u_MvpMatrix'); 
+    programBumpMapping.u_modelMatrix = gl.getUniformLocation(programBumpMapping, 'u_modelMatrix'); 
+    programBumpMapping.u_normalMatrix = gl.getUniformLocation(programBumpMapping, 'u_normalMatrix');
+    programBumpMapping.u_LightPosition = gl.getUniformLocation(programBumpMapping, 'u_LightPosition');
+    programBumpMapping.u_ViewPosition = gl.getUniformLocation(programBumpMapping, 'u_ViewPosition');
+    programBumpMapping.u_Ka = gl.getUniformLocation(programBumpMapping, 'u_Ka'); 
+    programBumpMapping.u_Kd = gl.getUniformLocation(programBumpMapping, 'u_Kd');
+    programBumpMapping.u_Ks = gl.getUniformLocation(programBumpMapping, 'u_Ks');
+    programBumpMapping.u_Color = gl.getUniformLocation(programBumpMapping, 'u_Color');
+    programBumpMapping.u_shininess = gl.getUniformLocation(programBumpMapping, 'u_shininess');
+    programBumpMapping.u_Sampler0 = gl.getUniformLocation(programBumpMapping, 'u_Sampler0');
+}

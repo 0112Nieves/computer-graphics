@@ -176,7 +176,7 @@ async function main(){
         return ;
     }
 
-    cubeObj = await loadOBJtoCreateVBO('cube.obj');
+    cubeObj = await loadOBJtoCreateVBO('sphere.obj');
 
     program = compileShader(gl, VSHADER_SOURCE, FSHADER_SOURCE);
     program.a_Position = gl.getAttribLocation(program, 'a_Position'); 
@@ -197,7 +197,7 @@ async function main(){
 
     var normalMapImage = new Image();
     normalMapImage.onload = function(){initTexture(gl, normalMapImage, "normalMapImage");};
-    normalMapImage.src = "normalMap.png";
+    normalMapImage.src = "snow_normalMap.jpg";
 
     canvas.onmousedown = function(ev){mouseDown(ev)};
     canvas.onmousemove = function(ev){mouseMove(ev)};
@@ -219,8 +219,8 @@ function draw(){
   let mdlMatrix = new Matrix4();
   mdlMatrix.setRotate(angleY, 1, 0, 0);//for mouse rotation
   mdlMatrix.rotate(angleX, 0, 1, 0);//for mouse rotation
-  mdlMatrix.scale(2, 2, 2);
-  drawOneRegularObject(cubeObj, mdlMatrix, vpMatrix, 0.4, 0.4, 0.4);
+  // mdlMatrix.scale(2, 2, 2);
+  drawOneRegularObject(cubeObj, mdlMatrix, vpMatrix, 0.92, 1.0, 1.0);
 }
 
 function drawOneRegularObject(obj, modelMatrix, vpMatrix, colorR, colorG, colorB){

@@ -183,3 +183,74 @@ var FSHADER_SHADOW_SOURCE = `
         gl_FragColor = vec4(gl_FragCoord.z, 0.0, 0.0, 1.0);
       }
   `;
+
+// bump mapping
+var VSHADER_SOURCE_BUMPMAPPING = `
+    attribute vec4 a_Position;
+    attribute vec2 a_TexCoord;
+    attribute vec3 a_Tagent;
+    attribute vec3 a_Bitagent;
+    uniform mat4 u_MvpMatrix;
+    uniform mat4 u_modelMatrix;
+    uniform mat4 u_normalMatrix;
+    varying vec3 v_PositionInWorld;
+    varying vec2 v_TexCoord;
+    varying mat4 v_TBN;
+    void main(){
+        gl_Position = u_MvpMatrix * a_Position;
+        v_PositionInWorld = (u_modelMatrix * a_Position).xyz; 
+        v_TexCoord = a_TexCoord;
+        //create TBN matrix 
+        vec3 tagent = normalize(a_Tagent);
+        vec3 bitagent = normalize(a_Bitagent);
+        vec3 nVector = cross(tagent, bitagent);
+        v_TBN = mat4(tagent.x, tagent.y, tagent.z, 0.0, 
+                           bitagent.x, bitagent.y, bitagent.z, 0.0,
+                           nVector.x, nVector.y, nVector.z, 0.0, 
+                           0.0, 0.0, 0.0, 1.0);
+    }    
+`;
+
+var FSHADER_SOURCE_BUMPMAPPING = `
+    precision mediump float;
+    uniform vec3 u_LightPosition;
+    uniform vec3 u_ViewPosition;
+    uniform float u_Ka;
+    uniform float u_Kd;
+    uniform float u_Ks;
+    uniform vec3 u_Color;
+    uniform float u_shininess;
+    uniform sampler2D u_Sampler0;
+    uniform highp mat4 u_normalMatrix;
+    varying vec3 v_PositionInWorld;
+    varying vec2 v_TexCoord;
+    varying mat4 v_TBN;
+    void main(){
+        // (you can also input them from ouside and make them different)
+        vec3 ambientLightColor = u_Color.rgb;
+        vec3 diffuseLightColor = u_Color.rgb;
+        // assume white specular light (you can also input it from ouside)
+        vec3 specularLightColor = vec3(1.0, 1.0, 1.0);        
+
+        vec3 ambient = ambientLightColor * u_Ka;
+
+        //normal vector from normal map
+        vec3 nMapNormal = normalize( texture2D( u_Sampler0, v_TexCoord ).rgb * 2.0 - 1.0 );
+        vec3 normal = normalize( vec3( u_normalMatrix * v_TBN * vec4( nMapNormal, 1.0) ) );
+        
+        vec3 lightDirection = normalize(u_LightPosition - v_PositionInWorld);
+        float nDotL = max(dot(lightDirection, normal), 0.0);
+        vec3 diffuse = diffuseLightColor * u_Kd * nDotL;
+
+        vec3 specular = vec3(0.0, 0.0, 0.0);
+        if(nDotL > 0.0) {
+            vec3 R = reflect(-lightDirection, normal);
+    
+            vec3 V = normalize(u_ViewPosition - v_PositionInWorld); 
+            float specAngle = clamp(dot(R, V), 0.0, 1.0);
+            specular = u_Ks * pow(specAngle, u_shininess) * specularLightColor; 
+        }
+
+        gl_FragColor = vec4( ambient + diffuse + specular, 1.0 );
+    }
+`;
